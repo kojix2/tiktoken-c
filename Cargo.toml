@@ -1,0 +1,13 @@
+[package]
+name = "tiktoken-c"
+version = "0.1.0"
+edition = "2021"
+authors = ["kojix2 <2xijok@gmail.com>"]
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+tiktoken-rs = { git = "https://github.com/zurawiki/tiktoken-rs" }
