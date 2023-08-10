@@ -67,6 +67,39 @@ pub extern "C" fn c_destroy_corebpe(ptr: *mut CoreBPE) {
     }
 }
 
+// get_bpe_from_tokenizer is not yet implemented.
+// Use c_r50k_base(), c_p50k_base(), c_p50k_edit(), and c_cl100k_base()
+// instead.
+
+#[no_mangle]
+pub extern "C" fn c_get_bpe_from_model(model: *const c_char) -> *mut CoreBPE {
+    if model.is_null() {
+        eprintln!("Null pointer provided for model!");
+        return std::ptr::null_mut();
+    }
+    let model = unsafe {
+        let raw = CStr::from_ptr(model);
+        match raw.to_str() {
+            Ok(valid_str) => valid_str,
+            Err(_) => {
+                eprintln!("Invalid UTF-8 sequence provided for model!");
+                return std::ptr::null_mut();
+            }
+        }
+    };
+    let bpe = tiktoken_rs::get_bpe_from_model(model);
+    match bpe {
+        Ok(bpe) => {
+            let boxed = Box::new(bpe);
+            Box::into_raw(boxed)
+        }
+        Err(_) => {
+            eprintln!("Failed to get BPE from model!");
+            std::ptr::null_mut()
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn c_get_completion_max_tokens(
     model: *const c_char,
@@ -248,39 +281,6 @@ pub extern "C" fn c_get_chat_completion_max_tokens(
 }
 
 #[no_mangle]
-pub extern "C" fn c_get_bpe_from_model(model: *const c_char) -> *mut CoreBPE {
-    if model.is_null() {
-        eprintln!("Null pointer provided for model!");
-        return std::ptr::null_mut();
-    }
-    let model = unsafe {
-        let raw = CStr::from_ptr(model);
-        match raw.to_str() {
-            Ok(valid_str) => valid_str,
-            Err(_) => {
-                eprintln!("Invalid UTF-8 sequence provided for model!");
-                return std::ptr::null_mut();
-            }
-        }
-    };
-    let bpe = tiktoken_rs::get_bpe_from_model(model);
-    match bpe {
-        Ok(bpe) => {
-            let boxed = Box::new(bpe);
-            Box::into_raw(boxed)
-        }
-        Err(_) => {
-            eprintln!("Failed to get BPE from model!");
-            std::ptr::null_mut()
-        }
-    }
-}
-
-// get_bpe_from_tokenizer is not yet implemented.
-// Use c_r50k_base(), c_p50k_base(), c_p50k_edit(), and c_cl100k_base()
-// instead.
-
-#[no_mangle]
 pub extern "C" fn c_corebpe_encode_ordinary(
     ptr: *mut CoreBPE,
     text: *const c_char,
@@ -435,6 +435,21 @@ mod tests {
     }
 
     #[test]
+    fn test_get_bpe_from_model() {
+        let model = CString::new("gpt-4").unwrap();
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        assert!(!corebpe.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_get_bpe_from_model_invalid_model() {
+        let model = CString::new("cat-gpt").unwrap();
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        assert!(corebpe.is_null());
+    }
+
+    #[test]
     fn test_get_completion_max_tokens() {
         let model = CString::new("gpt-4").unwrap();
         let prompt = CString::new("I am a cat.").unwrap();
@@ -586,5 +601,139 @@ mod tests {
             messages.as_ptr(),
         );
         assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_corebpe_encode_ordinary() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat.").unwrap();
+        let mut num_tokens: usize = 0;
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode_ordinary(corebpe, text.as_ptr(), &mut num_tokens);
+        assert_eq!(num_tokens, 5);
+        let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
+        let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
+        assert_eq!(tokens, vec![40, 1097, 264, 8415, 13]);
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_encode_ordinary_with_special_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat. <|endoftext|>").unwrap();
+        let mut num_tokens: usize = 0;
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode_with_special_tokens(corebpe, text.as_ptr(), &mut num_tokens);
+        assert_eq!(num_tokens, 7);
+        let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
+        let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
+        assert_eq!(tokens, vec![40, 1097, 264, 8415, 13, 220, 100257]);
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_encode_ordinary_null_corebpe() {
+        let text = CString::new("I am a cat.").unwrap();
+        let mut num_tokens: usize = 0;
+        let tokens = c_corebpe_encode_ordinary(std::ptr::null_mut(), text.as_ptr(), &mut num_tokens);
+        assert!(tokens.is_null());
+    }
+
+    #[test]
+    fn test_corebpe_encode_ordinary_null_text() {
+        let model = CString::new("gpt-4").unwrap();
+        let mut num_tokens: usize = 0;
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode_ordinary(corebpe, std::ptr::null(), &mut num_tokens);
+        assert!(tokens.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_encode_with_special_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat.").unwrap();
+        let mut num_tokens: usize = 0;
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode_with_special_tokens(corebpe, text.as_ptr(), &mut num_tokens);
+        assert_eq!(num_tokens, 5);
+        let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
+        let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
+        assert_eq!(tokens, vec![40, 1097, 264, 8415, 13]);
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_encode_with_special_tokens_with_special_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat. <|endoftext|>").unwrap();
+        let mut num_tokens: usize = 0;
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode_with_special_tokens(corebpe, text.as_ptr(), &mut num_tokens);
+        assert_eq!(num_tokens, 7);
+        let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
+        let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
+        assert_eq!(tokens, vec![40, 1097, 264, 8415, 13, 220, 100257]);
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_encode_with_special_tokens_null_corebpe() {
+        let text = CString::new("I am a cat.").unwrap();
+        let mut num_tokens: usize = 0;
+        let tokens =
+            c_corebpe_encode_with_special_tokens(std::ptr::null_mut(), text.as_ptr(), &mut num_tokens);
+        assert!(tokens.is_null());
+    }
+
+    #[test]
+    fn test_corebpe_encode_with_special_tokens_null_text() {
+        let model = CString::new("gpt-4").unwrap();
+        let mut num_tokens: usize = 0;
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens =
+            c_corebpe_encode_with_special_tokens(corebpe, std::ptr::null(), &mut num_tokens);
+        assert!(tokens.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_decode() {
+        let model = CString::new("gpt-4").unwrap();
+        let tokens = vec![40, 1097, 264, 8415, 13];
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let decoded = c_corebpe_decode(corebpe, tokens.as_ptr(), tokens.len());
+        let decoded = unsafe { CStr::from_ptr(decoded) };
+        let decoded = decoded.to_str().unwrap();
+        assert_eq!(decoded, "I am a cat.");
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_decode_null_corebpe() {
+        let tokens = vec![40, 1097, 264, 8415, 13];
+        let decoded = c_corebpe_decode(std::ptr::null_mut(), tokens.as_ptr(), tokens.len());
+        assert!(decoded.is_null());
+    }
+
+    #[test]
+    fn test_corebpe_decode_null_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let decoded = c_corebpe_decode(corebpe, std::ptr::null(), 0);
+        assert!(decoded.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_decode_invalid_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let tokens = vec![40, 1097, 264, 8415, 13, 220, 100257];
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let decoded = c_corebpe_decode(corebpe, tokens.as_ptr(), tokens.len());
+        let decoded = unsafe { CStr::from_ptr(decoded) };
+        let decoded = decoded.to_str().unwrap();
+        assert_eq!(decoded, "I am a cat. <|endoftext|>");
+        c_destroy_corebpe(corebpe);
     }
 }
