@@ -3,6 +3,28 @@ use std::os::raw::c_char;
 use tiktoken_rs;
 use tiktoken_rs::CoreBPE;
 
+fn get_string_from_c_char(ptr: *const c_char) -> Result<String, std::str::Utf8Error> {
+    let c_str = unsafe { CStr::from_ptr(ptr) };
+    let str_slice = c_str.to_str()?;
+    Ok(str_slice.to_string())
+}
+
+fn c_str_to_string(ptr: *const c_char) -> Option<String> {
+    if ptr.is_null() {
+        return None;
+    }
+
+    let c_str = match get_string_from_c_char(ptr) {
+        Ok(str) => str,
+        Err(_) => {
+            eprintln!("Invalid UTF-8 sequence provided!");
+            return None;
+        }
+    };
+
+    Some(c_str)
+}
+
 #[no_mangle]
 pub extern "C" fn c_r50k_base() -> *mut CoreBPE {
     let bpe = tiktoken_rs::r50k_base();
@@ -45,42 +67,6 @@ pub extern "C" fn c_destroy_corebpe(ptr: *mut CoreBPE) {
     }
 }
 
-#[repr(C)]
-pub struct CFunctionCall {
-    pub name: *const c_char,
-    pub arguments: *const c_char,
-}
-
-#[repr(C)]
-pub struct CChatCompletionRequestMessage {
-    pub role: *const c_char,
-    pub content: *const c_char,
-    pub name: *const c_char,
-    pub function_call: *const CFunctionCall,
-}
-
-fn get_string_from_c_char(ptr: *const c_char) -> Result<String, std::str::Utf8Error> {
-    let c_str = unsafe { CStr::from_ptr(ptr) };
-    let str_slice = c_str.to_str()?;
-    Ok(str_slice.to_string())
-}
-
-fn c_str_to_string(ptr: *const c_char) -> Option<String> {
-    if ptr.is_null() {
-        return None;
-    }
-
-    let c_str = match get_string_from_c_char(ptr) {
-        Ok(str) => str,
-        Err(_) => {
-            eprintln!("Invalid UTF-8 sequence provided!");
-            return None;
-        }
-    };
-
-    Some(c_str)
-}
-
 #[no_mangle]
 pub extern "C" fn c_get_completion_max_tokens(
     model: *const c_char,
@@ -121,6 +107,20 @@ pub extern "C" fn c_get_completion_max_tokens(
             return usize::MAX;
         }
     }
+}
+
+#[repr(C)]
+pub struct CFunctionCall {
+    pub name: *const c_char,
+    pub arguments: *const c_char,
+}
+
+#[repr(C)]
+pub struct CChatCompletionRequestMessage {
+    pub role: *const c_char,
+    pub content: *const c_char,
+    pub name: *const c_char,
+    pub function_call: *const CFunctionCall,
 }
 
 #[no_mangle]
@@ -211,6 +211,10 @@ pub extern "C" fn c_get_chat_completion_max_tokens(
         let slice = std::slice::from_raw_parts(messages, num_messages as usize);
         let mut messages_vec = Vec::with_capacity(num_messages as usize);
         for message in slice {
+            if message.role.is_null() {
+                eprintln!("Null pointer provided for role!");
+                return usize::MAX;
+            }
             let role = c_str_to_string(message.role.clone()).unwrap_or_default();
             let content = c_str_to_string(message.content.clone());
             let name = c_str_to_string(message.name.clone());
@@ -386,6 +390,21 @@ pub extern "C" fn c_corebpe_decode(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::CString;
+
+    #[test]
+    fn test_get_string_from_c_char() {
+        let c_str = CString::new("I am a cat.").unwrap();
+        let str = get_string_from_c_char(c_str.as_ptr()).unwrap();
+        assert_eq!(str, "I am a cat.");
+    }
+
+    #[test]
+    fn test_c_str_to_string() {
+        let c_str = CString::new("I am a cat.").unwrap();
+        let str = c_str_to_string(c_str.as_ptr()).unwrap();
+        assert_eq!(str, "I am a cat.");
+    }
 
     #[test]
     fn test_c50k_base() {
@@ -413,5 +432,159 @@ mod tests {
         let corebpe = c_cl100k_base();
         assert!(!corebpe.is_null());
         c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_get_completion_max_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let prompt = CString::new("I am a cat.").unwrap();
+        let max_tokens = c_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        assert_eq!(max_tokens, 8187);
+    }
+
+    #[test]
+    fn test_get_completion_max_tokens_invalid_model() {
+        let model = CString::new("cat-gpt").unwrap();
+        let prompt = CString::new("I am a cat.").unwrap();
+        let max_tokens = c_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_completion_max_tokens_null_model() {
+        let prompt = CString::new("I am a cat.").unwrap();
+        let max_tokens = c_get_completion_max_tokens(std::ptr::null(), prompt.as_ptr());
+        assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_completion_max_tokens_null_prompt() {
+        let model = CString::new("gpt-4").unwrap();
+        let max_tokens = c_get_completion_max_tokens(model.as_ptr(), std::ptr::null());
+        assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_num_tokens_from_messages() {
+        let model = CString::new("gpt-4").unwrap();
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: std::ptr::null(),
+        };
+        let messages = vec![message];
+        let num_tokens = c_num_tokens_from_messages(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(num_tokens, 12);
+    }
+
+    #[test]
+    fn test_num_tokens_from_messages_null_model() {
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: std::ptr::null(),
+        };
+        let messages = vec![message];
+        let num_tokens = c_num_tokens_from_messages(
+            std::ptr::null(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(num_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_num_tokens_from_messages_null_messages() {
+        let model = CString::new("gpt-4").unwrap();
+        let num_tokens = c_num_tokens_from_messages(model.as_ptr(), 0, std::ptr::null());
+        assert_eq!(num_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_chat_completion_max_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: std::ptr::null(),
+        };
+        let messages = vec![message];
+        let max_tokens = c_get_chat_completion_max_tokens(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(max_tokens, 8180);
+    }
+
+    #[test]
+    fn test_get_chat_completion_max_tokens_null_model() {
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: std::ptr::null(),
+        };
+        let messages = vec![message];
+        let max_tokens = c_get_chat_completion_max_tokens(
+            std::ptr::null(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_chat_completion_max_tokens_invalid_model() {
+        let model = CString::new("cat-gpt").unwrap();
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: std::ptr::null(),
+        };
+        let messages = vec![message];
+        let max_tokens = c_get_chat_completion_max_tokens(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_chat_completion_max_tokens_null_role() {
+        let model = CString::new("gpt-4").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = CChatCompletionRequestMessage {
+            role: std::ptr::null(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: std::ptr::null(),
+        };
+        let messages = vec![message];
+        let max_tokens = c_get_chat_completion_max_tokens(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(max_tokens, usize::MAX);
     }
 }
