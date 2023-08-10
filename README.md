@@ -1,7 +1,9 @@
 # tiktoken-c
 
-This library adds a simple API for C to [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs).
-This library was created for [tiktoken-cr](https://github.com/kojix2/tiktoken-cr).
+[![test](https://github.com/kojix2/tiktoken-c/actions/workflows/test.yml/badge.svg)](https://github.com/kojix2/tiktoken-c/actions/workflows/test.yml)
+
+- This library adds a simple API for C to [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs).
+- This library was created for [tiktoken-cr](https://github.com/kojix2/tiktoken-cr).
 
 ## API
     
@@ -51,7 +53,9 @@ char *c_corebpe_decode(CoreBPE *ptr, const uintptr_t *tokens, uintptr_t num_toke
 - Report bugs
 - Fix bugs and submit pull requests
 - Write, clarify, or fix documentation
-  - English corrections by native speakers are welcome.
 - Suggest or add new features
 - Make a donation
 
+# License
+
+MIT
