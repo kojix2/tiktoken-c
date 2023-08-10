@@ -382,3 +382,36 @@ pub extern "C" fn c_corebpe_decode(
     let ptr = c_str.into_raw();
     ptr
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_c50k_base() {
+        let corebpe = c_r50k_base();
+        assert!(!corebpe.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_p50k_base() {
+        let corebpe = c_p50k_base();
+        assert!(!corebpe.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_p50k_edit() {
+        let corebpe = c_p50k_edit();
+        assert!(!corebpe.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_cl100k_base() {
+        let corebpe = c_cl100k_base();
+        assert!(!corebpe.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+}
