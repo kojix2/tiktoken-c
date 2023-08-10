@@ -12,3 +12,4 @@ crate-type = ["cdylib"]
 [dependencies]
 tiktoken-rs = { git = "https://github.com/zurawiki/tiktoken-rs" }
 log = "0.4"
+simple_logger = "4.2"
