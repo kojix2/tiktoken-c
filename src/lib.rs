@@ -322,6 +322,60 @@ pub extern "C" fn c_corebpe_encode_ordinary(
     Box::into_raw(boxed) as *mut usize
 }
 
+// pub fn encode(&self, text: &str, allowed_special: HashSet<&str>) -> Vec<usize>
+#[no_mangle]
+pub extern "C" fn c_corebpe_encode(
+    ptr: *mut CoreBPE,
+    text: *const c_char,
+    allowed_special: *const *const c_char,
+    allowed_special_len: usize,
+    num_tokens: *mut usize,
+) -> *mut usize {
+    if ptr.is_null() {
+        warn!("Null pointer provided for CoreBPE!");
+        return std::ptr::null_mut();
+    }
+    if text.is_null() {
+        warn!("Null pointer provided for text!");
+        return std::ptr::null_mut();
+    }
+    let text = unsafe {
+        let raw = CStr::from_ptr(text);
+        match raw.to_str() {
+            Ok(valid_str) => valid_str,
+            Err(_) => {
+                warn!("Invalid UTF-8 sequence provided for text!");
+                return std::ptr::null_mut();
+            }
+        }
+    };
+    let allowed_special = unsafe {
+        let slice = std::slice::from_raw_parts(allowed_special, allowed_special_len);
+        let mut allowed_special_hash_set = std::collections::HashSet::new();
+        for i in 0..allowed_special_len {
+            let c_str = CStr::from_ptr(slice[i]);
+            let str_slice = match c_str.to_str() {
+                Ok(valid_str) => valid_str,
+                Err(_) => {
+                    warn!("Invalid UTF-8 sequence provided for allowed_special!");
+                    return std::ptr::null_mut();
+                }
+            };
+            allowed_special_hash_set.insert(str_slice);
+        }
+        allowed_special_hash_set
+    };
+    let corebpe = unsafe { &mut *ptr };
+    let encoded = corebpe.encode(text, allowed_special);
+    unsafe {
+        if !num_tokens.is_null() {
+            *num_tokens = encoded.len();
+        }
+    };
+    let boxed = encoded.into_boxed_slice();
+    Box::into_raw(boxed) as *mut usize
+}
+
 #[no_mangle]
 pub extern "C" fn c_corebpe_encode_with_special_tokens(
     ptr: *mut CoreBPE,
@@ -648,6 +702,104 @@ mod tests {
         let corebpe = c_get_bpe_from_model(model.as_ptr());
         let tokens = c_corebpe_encode_ordinary(corebpe, std::ptr::null(), &mut num_tokens);
         assert!(tokens.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_crebpe_encode() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat. <|fim_prefix|><|endoftext|>").unwrap();
+        let mut num_tokens: usize = 0;
+        let allowed_special: Vec<String> = vec!["<|endoftext|>".to_string(), "<|fim_prefix|>".to_string()];
+        let allowed_special: Vec<CString> = allowed_special
+            .iter()
+            .map(|x| CString::new(x.as_str()).unwrap())
+            .collect();
+        let allowed_special: Vec<*const c_char> = allowed_special
+            .iter()
+            .map(|x| x.as_ptr())
+            .collect();
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode(
+            corebpe,
+            text.as_ptr(),
+            allowed_special.as_ptr(),
+            allowed_special.len(),
+            &mut num_tokens,
+        );
+        assert_eq!(num_tokens, 8);
+        let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
+        let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
+        assert_eq!(tokens, vec![40, 1097, 264, 8415, 13, 220, 100258, 100257]);
+        c_destroy_corebpe(corebpe);
+    }
+    
+    #[test]
+    fn test_crebpe_encode_null_corebpe() {
+        let text = CString::new("I am a cat. <|endoftext|>").unwrap();
+        let mut num_tokens: usize = 0;
+        let allowed_special: Vec<String> = vec!["<|endoftext|>".to_string()];
+        let allowed_special: Vec<CString> = allowed_special
+            .iter()
+            .map(|x| CString::new(x.as_str()).unwrap())
+            .collect();
+        let allowed_special: Vec<*const c_char> = allowed_special
+            .iter()
+            .map(|x| x.as_ptr())
+            .collect();
+        let corebpe = std::ptr::null_mut();
+        let tokens = c_corebpe_encode(
+            corebpe,
+            text.as_ptr(),
+            allowed_special.as_ptr(),
+            allowed_special.len(),
+            &mut num_tokens,
+        );
+        assert!(tokens.is_null());
+    }
+
+    #[test]
+    fn test_crebpe_encode_null_text() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = std::ptr::null();
+        let mut num_tokens: usize = 0;
+        let allowed_special: Vec<String> = vec!["<|endoftext|>".to_string()];
+        let allowed_special: Vec<CString> = allowed_special
+            .iter()
+            .map(|x| CString::new(x.as_str()).unwrap())
+            .collect();
+        let allowed_special: Vec<*const c_char> = allowed_special
+            .iter()
+            .map(|x| x.as_ptr())
+            .collect();
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode(
+            corebpe,
+            text,
+            allowed_special.as_ptr(),
+            allowed_special.len(),
+            &mut num_tokens,
+        );
+        assert!(tokens.is_null());
+    }
+
+    #[test]
+    fn test_crebpe_encode_without_special_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat. <|endoftext|>").unwrap();
+        let mut num_tokens: usize = 0;
+        let corebpe = c_get_bpe_from_model(model.as_ptr());
+        let tokens = c_corebpe_encode(
+            corebpe,
+            text.as_ptr(),
+            std::ptr::null(),
+            0,
+            &mut num_tokens,
+        );
+        assert_eq!(num_tokens, 11);
+        let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
+        let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
+        assert_eq!(tokens, vec![40, 1097, 264, 8415, 13, 83739, 8862, 728, 428, 91, 29]);
         c_destroy_corebpe(corebpe);
     }
 
