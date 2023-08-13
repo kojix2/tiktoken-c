@@ -1,5 +1,7 @@
 # tiktoken-c
 
+This library provides an unofficial C API for [Tiktoken](https://github.com/openai/tiktoken).
+
 [![test](https://github.com/kojix2/tiktoken-c/actions/workflows/test.yml/badge.svg)](https://github.com/kojix2/tiktoken-c/actions/workflows/test.yml)
 
 - This library adds a simple API for C to [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs).
