@@ -7,7 +7,7 @@ This library provides an unofficial C API for [Tiktoken](https://github.com/open
 - This library adds a simple API for C to [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs).
 - This library was created for [tiktoken-cr](https://github.com/kojix2/tiktoken-cr).
 
-How to create a shared library
+## Build
 
 ```sh
 git clone https://github.com/kojix2/tiktoken-c
