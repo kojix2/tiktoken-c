@@ -10,6 +10,6 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-tiktoken-rs = { git = "https://github.com/zurawiki/tiktoken-rs" }
+tiktoken-rs = "0.5.1"
 log = "0.4"
 simple_logger = "4.2"
