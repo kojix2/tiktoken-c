@@ -24,5 +24,5 @@ jobs:
           files: |
             target/release/libtiktoken_c.so
             target/release/libtiktoken_c.dylib
-            target/release/libtiktoken_c.dll
-            target/release/libtiktoken_c.dll.lib
+            target/release/tiktoken_c.dll
+            target/release/tiktoken_c.dll.lib
