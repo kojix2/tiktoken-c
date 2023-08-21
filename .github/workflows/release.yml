@@ -1,0 +1,28 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build_release_x64:
+    name: Build Release x64
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release --verbose
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/release/libtiktoken_c.so
+            target/release/libtiktoken_c.dylib
+            target/release/libtiktoken_c.dll
+            target/release/libtiktoken_c.dll.lib
