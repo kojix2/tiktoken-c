@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef void CoreBPE;
 
 typedef struct CFunctionCall {
   const char *name;

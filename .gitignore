@@ -6,3 +6,6 @@ Cargo.lock
 **/*.rs.bk
 
 *.pdb
+
+test/test
+*.out
