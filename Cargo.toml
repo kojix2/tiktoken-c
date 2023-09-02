@@ -10,6 +10,6 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-tiktoken-rs = "0.5.1"
+tiktoken-rs = "0.5"
 log = "0.4"
 simple_logger = "4.2"
