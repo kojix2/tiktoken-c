@@ -8,5 +8,6 @@ jobs:
         os: ["ubuntu", "macos"]
     steps:
       - uses: actions/checkout@v3
+      - run: rustup update
       - run: cargo build --verbose
       - run: cargo test --verbose
