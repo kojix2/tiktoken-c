@@ -710,15 +710,14 @@ mod tests {
         let model = CString::new("gpt-4").unwrap();
         let text = CString::new("I am a cat. <|fim_prefix|><|endoftext|>").unwrap();
         let mut num_tokens: usize = 0;
-        let allowed_special: Vec<String> = vec!["<|endoftext|>".to_string(), "<|fim_prefix|>".to_string()];
+        let allowed_special: Vec<String> =
+            vec!["<|endoftext|>".to_string(), "<|fim_prefix|>".to_string()];
         let allowed_special: Vec<CString> = allowed_special
             .iter()
             .map(|x| CString::new(x.as_str()).unwrap())
             .collect();
-        let allowed_special: Vec<*const c_char> = allowed_special
-            .iter()
-            .map(|x| x.as_ptr())
-            .collect();
+        let allowed_special: Vec<*const c_char> =
+            allowed_special.iter().map(|x| x.as_ptr()).collect();
         let corebpe = c_get_bpe_from_model(model.as_ptr());
         let tokens = c_corebpe_encode(
             corebpe,
@@ -733,7 +732,7 @@ mod tests {
         assert_eq!(tokens, vec![40, 1097, 264, 8415, 13, 220, 100258, 100257]);
         c_destroy_corebpe(corebpe);
     }
-    
+
     #[test]
     fn test_crebpe_encode_null_corebpe() {
         let text = CString::new("I am a cat. <|endoftext|>").unwrap();
@@ -743,10 +742,8 @@ mod tests {
             .iter()
             .map(|x| CString::new(x.as_str()).unwrap())
             .collect();
-        let allowed_special: Vec<*const c_char> = allowed_special
-            .iter()
-            .map(|x| x.as_ptr())
-            .collect();
+        let allowed_special: Vec<*const c_char> =
+            allowed_special.iter().map(|x| x.as_ptr()).collect();
         let corebpe = std::ptr::null_mut();
         let tokens = c_corebpe_encode(
             corebpe,
@@ -768,10 +765,8 @@ mod tests {
             .iter()
             .map(|x| CString::new(x.as_str()).unwrap())
             .collect();
-        let allowed_special: Vec<*const c_char> = allowed_special
-            .iter()
-            .map(|x| x.as_ptr())
-            .collect();
+        let allowed_special: Vec<*const c_char> =
+            allowed_special.iter().map(|x| x.as_ptr()).collect();
         let corebpe = c_get_bpe_from_model(model.as_ptr());
         let tokens = c_corebpe_encode(
             corebpe,
@@ -789,17 +784,14 @@ mod tests {
         let text = CString::new("I am a cat. <|endoftext|>").unwrap();
         let mut num_tokens: usize = 0;
         let corebpe = c_get_bpe_from_model(model.as_ptr());
-        let tokens = c_corebpe_encode(
-            corebpe,
-            text.as_ptr(),
-            std::ptr::null(),
-            0,
-            &mut num_tokens,
-        );
+        let tokens = c_corebpe_encode(corebpe, text.as_ptr(), std::ptr::null(), 0, &mut num_tokens);
         assert_eq!(num_tokens, 11);
         let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
         let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
-        assert_eq!(tokens, vec![40, 1097, 264, 8415, 13, 83739, 8862, 728, 428, 91, 29]);
+        assert_eq!(
+            tokens,
+            vec![40, 1097, 264, 8415, 13, 83739, 8862, 728, 428, 91, 29]
+        );
         c_destroy_corebpe(corebpe);
     }
 
