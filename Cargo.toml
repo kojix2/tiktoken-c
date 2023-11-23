@@ -1,6 +1,6 @@
 [package]
 name = "tiktoken-c"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["kojix2 <2xijok@gmail.com>"]
 license = "MIT"
