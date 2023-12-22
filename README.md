@@ -69,6 +69,15 @@ size_t *c_corebpe_encode_with_special_tokens(CoreBPE *ptr, const char *text, siz
 char *c_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
 ```
 
+## cbindgen
+
+```
+cargo install --force cbindgen
+cbindgen --config cbindgen.toml --crate tiktoken-c --output tiktoken.h
+# Add Opaque Pointer
+perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
+```
+
 ## Contributing
 
 - Report bugs
