@@ -1,11 +1,10 @@
 # tiktoken-c
 
-This library provides an unofficial C API for [Tiktoken](https://github.com/openai/tiktoken).
-
 [![test](https://github.com/kojix2/tiktoken-c/actions/workflows/test.yml/badge.svg)](https://github.com/kojix2/tiktoken-c/actions/workflows/test.yml)
 
+- This library provides an unofficial C API for [Tiktoken](https://github.com/openai/tiktoken).
+- It allows tiktoken to be used from a variety of programming languages.
 - This library adds a simple API for C to [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs).
-- This library was created for [tiktoken-cr](https://github.com/kojix2/tiktoken-cr).
 
 ## Build
 
@@ -18,6 +17,8 @@ cargo build --release
 ```
 
 ## API
+
+Please refer to the [tiktoken-rs documentation](https://docs.rs/tiktoken-rs/).
     
 ```c
 typedef struct CFunctionCall {
@@ -69,22 +70,35 @@ size_t *c_corebpe_encode_with_special_tokens(CoreBPE *ptr, const char *text, siz
 char *c_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
 ```
 
-## cbindgen
+## Language Bindings
+
+|Language|Bindings|
+|---|---|
+|Crystal|[tiktoken-cr](https://github.com/kojix2/tiktoken-cr)|
+
+## Development
+
+Run tests
+
+```
+# Tests written in Rust
+cargo test
+# Tests in C
+cd test && ./test.sh
+```
+
+Create header files with [cbindgen](https://github.com/mozilla/cbindgen)
 
 ```
 cargo install --force cbindgen
 cbindgen --config cbindgen.toml --crate tiktoken-c --output tiktoken.h
-# Add Opaque Pointer
-perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
 ```
 
-## Contributing
+cbindgen does not support opaque pointers and must be added.
 
-- Report bugs
-- Fix bugs and submit pull requests
-- Write, clarify, or fix documentation
-- Suggest or add new features
-- Make a donation
+```
+perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
+```
 
 # License
 
