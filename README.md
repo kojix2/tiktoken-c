@@ -78,6 +78,8 @@ char *c_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
 
 ## Development
 
+The code for this project was created by fully utilizing ChatGPT and GitHub Copilot.
+
 Run tests
 
 ```
@@ -100,6 +102,6 @@ cbindgen does not support opaque pointers and must be added.
 perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
 ```
 
-# License
+## License
 
 MIT
