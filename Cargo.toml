@@ -7,7 +7,7 @@ license = "MIT"
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 tiktoken-rs = "0.5"
