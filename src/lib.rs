@@ -65,6 +65,14 @@ pub extern "C" fn c_cl100k_base() -> *mut CoreBPE {
 }
 
 #[no_mangle]
+pub extern "C" fn c_o200k_base() -> *mut CoreBPE {
+    let bpe = tiktoken_rs::o200k_base();
+    let corebpe = bpe.unwrap();
+    let boxed = Box::new(corebpe);
+    Box::into_raw(boxed)
+}
+
+#[no_mangle]
 pub extern "C" fn c_destroy_corebpe(ptr: *mut CoreBPE) {
     if ptr.is_null() {
         return;
@@ -75,7 +83,7 @@ pub extern "C" fn c_destroy_corebpe(ptr: *mut CoreBPE) {
 }
 
 // get_bpe_from_tokenizer is not yet implemented.
-// Use c_r50k_base(), c_p50k_base(), c_p50k_edit(), and c_cl100k_base()
+// Use c_r50k_base(), c_p50k_base(), c_p50k_edit(), c_cl100k_base(), and c_o200k_base()
 // instead.
 
 #[no_mangle]
@@ -491,6 +499,13 @@ mod tests {
     #[test]
     fn test_cl100k_base() {
         let corebpe = c_cl100k_base();
+        assert!(!corebpe.is_null());
+        c_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_o200k_base() {
+        let corebpe = c_o200k_base();
         assert!(!corebpe.is_null());
         c_destroy_corebpe(corebpe);
     }

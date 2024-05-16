@@ -19,7 +19,7 @@ cargo build --release
 ## API
 
 Please refer to the [tiktoken-rs documentation](https://docs.rs/tiktoken-rs/).
-    
+
 ```c
 typedef struct CFunctionCall {
   const char *name;
@@ -42,6 +42,8 @@ CoreBPE *c_p50k_base(void);
 CoreBPE *c_p50k_edit(void);
 
 CoreBPE *c_cl100k_base(void);
+
+CoreBPE *c_o200k_base(void);
 
 void c_destroy_corebpe(CoreBPE *ptr);
 
