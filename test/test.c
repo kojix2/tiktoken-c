@@ -1,10 +1,28 @@
 #include "../tiktoken.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    char *model = "gpt-4"; // default model
+    int opt;
+
+    while ((opt = getopt(argc, argv, "m:")) != -1)
+    {
+        switch (opt)
+        {
+        case 'm':
+            model = optarg;
+            break;
+        default:
+            fprintf(stderr, "Usage: %s [-m model]\n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     char *text = NULL;
     size_t len = 0;
     ssize_t nread;
@@ -22,7 +40,7 @@ int main(void)
         text[--nread] = '\0';
     }
 
-    CoreBPE *bpe = c_get_bpe_from_model("gpt-4");
+    CoreBPE *bpe = c_get_bpe_from_model(model);
     size_t n;
     size_t *tokens = c_corebpe_encode_with_special_tokens(bpe, text, &n);
 
