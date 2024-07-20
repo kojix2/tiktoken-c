@@ -6,7 +6,11 @@
 - It allows tiktoken to be used from a variety of programming languages.
 - This library adds a simple API for C to [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs).
 
-## Build
+## Installation
+
+Download binaries from [GitHub Releases](https://github.com/kojix2/tiktoken-c/releases).
+
+From source code:
 
 ```sh
 git clone https://github.com/kojix2/tiktoken-c
@@ -74,9 +78,9 @@ char *c_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
 
 ## Language Bindings
 
-|Language|Bindings|
-|---|---|
-|Crystal|[tiktoken-cr](https://github.com/kojix2/tiktoken-cr)|
+| Language | Bindings                                             |
+| -------- | ---------------------------------------------------- |
+| Crystal  | [tiktoken-cr](https://github.com/kojix2/tiktoken-cr) |
 
 ## Development
 
