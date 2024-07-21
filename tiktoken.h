@@ -22,40 +22,42 @@ typedef struct CChatCompletionRequestMessage {
   const struct CFunctionCall *function_call;
 } CChatCompletionRequestMessage;
 
-void c_init_logger(void);
+void tiktoken_init_logger(void);
 
-CoreBPE *c_r50k_base(void);
+CoreBPE *tiktoken_r50k_base(void);
 
-CoreBPE *c_p50k_base(void);
+CoreBPE *tiktoken_p50k_base(void);
 
-CoreBPE *c_p50k_edit(void);
+CoreBPE *tiktoken_p50k_edit(void);
 
-CoreBPE *c_cl100k_base(void);
+CoreBPE *tiktoken_cl100k_base(void);
 
-CoreBPE *c_o200k_base(void);
+CoreBPE *tiktoken_o200k_base(void);
 
-void c_destroy_corebpe(CoreBPE *ptr);
+void tiktoken_destroy_corebpe(CoreBPE *ptr);
 
-CoreBPE *c_get_bpe_from_model(const char *model);
+CoreBPE *tiktoken_get_bpe_from_model(const char *model);
 
-size_t c_get_completion_max_tokens(const char *model, const char *prompt);
+size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt);
 
-size_t c_num_tokens_from_messages(const char *model,
-                                  uint32_t num_messages,
-                                  const struct CChatCompletionRequestMessage *messages);
+size_t tiktoken_num_tokens_from_messages(const char *model,
+                                         uint32_t num_messages,
+                                         const struct CChatCompletionRequestMessage *messages);
 
-size_t c_get_chat_completion_max_tokens(const char *model,
-                                        uint32_t num_messages,
-                                        const struct CChatCompletionRequestMessage *messages);
+size_t tiktoken_get_chat_completion_max_tokens(const char *model,
+                                               uint32_t num_messages,
+                                               const struct CChatCompletionRequestMessage *messages);
 
-size_t *c_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
+size_t *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
 
-size_t *c_corebpe_encode(CoreBPE *ptr,
-                         const char *text,
-                         const char *const *allowed_special,
-                         size_t allowed_special_len,
-                         size_t *num_tokens);
+size_t *tiktoken_corebpe_encode(CoreBPE *ptr,
+                                const char *text,
+                                const char *const *allowed_special,
+                                size_t allowed_special_len,
+                                size_t *num_tokens);
 
-size_t *c_corebpe_encode_with_special_tokens(CoreBPE *ptr, const char *text, size_t *num_tokens);
+size_t *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
+                                                    const char *text,
+                                                    size_t *num_tokens);
 
-char *c_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
+char *tiktoken_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);

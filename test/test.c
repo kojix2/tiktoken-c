@@ -40,9 +40,9 @@ int main(int argc, char *argv[])
         text[--nread] = '\0';
     }
 
-    CoreBPE *bpe = c_get_bpe_from_model(model);
+    CoreBPE *bpe = tiktoken_get_bpe_from_model(model);
     size_t n;
-    size_t *tokens = c_corebpe_encode_with_special_tokens(bpe, text, &n);
+    size_t *tokens = tiktoken_corebpe_encode_with_special_tokens(bpe, text, &n);
 
     for (size_t i = 0; i < n; i++)
     {
