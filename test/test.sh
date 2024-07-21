@@ -4,6 +4,10 @@
 export LD_LIBRARY_PATH="../target/debug"
 
 cc test.c -L ../target/debug/ -ltiktoken_c -o test
+cc version.c -L ../target/debug/ -ltiktoken_c -o version
+
+# Show version
+./version
 
 # Initialize test result
 ALL_TESTS_PASSED=true

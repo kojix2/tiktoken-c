@@ -1,6 +1,6 @@
 use log::warn;
 use simple_logger::SimpleLogger;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use tiktoken_rs;
 use tiktoken_rs::CoreBPE;
@@ -460,10 +460,31 @@ pub extern "C" fn tiktoken_corebpe_decode(
     ptr
 }
 
+#[no_mangle]
+pub extern "C" fn tiktoken_c_version() -> *const c_char {
+    const TIKTOKEN_C_VERSION: &str = env!("CARGO_PKG_VERSION");
+    let c_str = match CString::new(TIKTOKEN_C_VERSION.to_string()) {
+        Ok(c_str) => c_str,
+        Err(_) => {
+            warn!("Failed to convert to CString!");
+            // "unknown" version
+            CString::new("unknown".to_string()).unwrap()
+        }
+    };
+    let ptr = c_str.into_raw();
+    ptr
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ffi::CString;
+
+    #[test]
+    fn test_tiktoken_c_version() {
+        let version = tiktoken_c_version();
+        let version = get_string_from_c_char(version).unwrap();
+        assert_eq!(version, env!("CARGO_PKG_VERSION"));
+    }
 
     #[test]
     fn test_get_string_from_c_char() {

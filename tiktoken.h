@@ -61,3 +61,5 @@ size_t *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
                                                     size_t *num_tokens);
 
 char *tiktoken_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
+
+const char *tiktoken_c_version(void);
