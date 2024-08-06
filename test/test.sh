@@ -3,7 +3,7 @@
 # Add missing import
 export LD_LIBRARY_PATH="../target/release:../target/debug"
 # MacOS
-export DYLD_LIBRARY_PATH="../target/debug:../target/debug"
+export DYLD_LIBRARY_PATH="../target/release:../target/debug"
 
 cc test.c -L ../target/debug/ -ltiktoken_c -o test
 cc version.c -L ../target/debug/ -ltiktoken_c -o version
