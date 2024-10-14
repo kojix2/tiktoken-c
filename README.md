@@ -95,7 +95,7 @@ The code for this project was created by fully utilizing ChatGPT and GitHub Copi
 
 Run tests
 
-```
+```sh
 # Tests written in Rust
 cargo test
 # Tests in C
@@ -104,14 +104,14 @@ cd test && ./test.sh
 
 Create header files with [cbindgen](https://github.com/mozilla/cbindgen)
 
-```
+```sh
 cargo install --force cbindgen
 cbindgen --config cbindgen.toml --crate tiktoken-c --output tiktoken.h
 ```
 
 cbindgen does not support opaque pointers and must be added.
 
-```
+```sh
 perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\ntypedef uint32_t Rank;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
 ```
 
