@@ -2,9 +2,14 @@ use log::warn;
 use simple_logger::SimpleLogger;
 use std::ffi::{c_char, CStr};
 use tiktoken_rs;
-use tiktoken_rs::CoreBPE;
+use tiktoken_rs::{CoreBPE, Rank};
 
 mod corebpe;
+// use corebpe::{
+//     tiktoken_cl100k_base, tiktoken_destroy_corebpe, tiktoken_get_bpe_from_model,
+//     tiktoken_o200k_base, tiktoken_p50k_base, tiktoken_p50k_edit, tiktoken_r50k_base,
+// };
+
 mod utils;
 use utils::c_str_to_string;
 
@@ -198,7 +203,7 @@ pub extern "C" fn tiktoken_corebpe_encode_ordinary(
     ptr: *mut CoreBPE,
     text: *const c_char,
     num_tokens: *mut usize,
-) -> *mut usize {
+) -> *mut Rank {
     if ptr.is_null() {
         warn!("Null pointer provided for CoreBPE!");
         return std::ptr::null_mut();
@@ -225,7 +230,7 @@ pub extern "C" fn tiktoken_corebpe_encode_ordinary(
         }
     };
     let boxed = encoded.into_boxed_slice();
-    Box::into_raw(boxed) as *mut usize
+    Box::into_raw(boxed) as *mut Rank
 }
 
 // pub fn encode(&self, text: &str, allowed_special: HashSet<&str>) -> Vec<usize>
@@ -236,7 +241,7 @@ pub extern "C" fn tiktoken_corebpe_encode(
     allowed_special: *const *const c_char,
     allowed_special_len: usize,
     num_tokens: *mut usize,
-) -> *mut usize {
+) -> *mut Rank {
     if ptr.is_null() {
         warn!("Null pointer provided for CoreBPE!");
         return std::ptr::null_mut();
@@ -283,7 +288,7 @@ pub extern "C" fn tiktoken_corebpe_encode(
         }
     };
     let boxed = encoded.into_boxed_slice();
-    Box::into_raw(boxed) as *mut usize
+    Box::into_raw(boxed) as *mut Rank
 }
 
 #[no_mangle]
@@ -291,7 +296,7 @@ pub extern "C" fn tiktoken_corebpe_encode_with_special_tokens(
     ptr: *mut CoreBPE,
     text: *const c_char,
     num_tokens: *mut usize,
-) -> *mut usize {
+) -> *mut Rank {
     if ptr.is_null() {
         warn!("Null pointer provided for CoreBPE!");
         return std::ptr::null_mut();
@@ -318,13 +323,13 @@ pub extern "C" fn tiktoken_corebpe_encode_with_special_tokens(
         }
     };
     let boxed = encoded.into_boxed_slice();
-    Box::into_raw(boxed) as *mut usize
+    Box::into_raw(boxed) as *mut Rank
 }
 
 #[no_mangle]
 pub extern "C" fn tiktoken_corebpe_decode(
     ptr: *mut CoreBPE,
-    tokens: *const usize,
+    tokens: *const Rank,
     num_tokens: usize,
 ) -> *mut c_char {
     if ptr.is_null() {
@@ -336,7 +341,7 @@ pub extern "C" fn tiktoken_corebpe_decode(
         return std::ptr::null_mut();
     }
     let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
-    let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
+    let tokens = tokens.to_vec();
 
     let corebpe = unsafe { &mut *ptr };
     let decoded = corebpe.decode(tokens);

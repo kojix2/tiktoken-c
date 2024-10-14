@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 typedef void CoreBPE;
+typedef uint32_t Rank;
 
 typedef struct CFunctionCall {
   const char *name;
@@ -21,6 +22,8 @@ typedef struct CChatCompletionRequestMessage {
   const char *name;
   const struct CFunctionCall *function_call;
 } CChatCompletionRequestMessage;
+
+const char *tiktoken_c_version(void);
 
 void tiktoken_init_logger(void);
 
@@ -48,18 +51,18 @@ size_t tiktoken_get_chat_completion_max_tokens(const char *model,
                                                uint32_t num_messages,
                                                const struct CChatCompletionRequestMessage *messages);
 
-size_t *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
+Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
 
-size_t *tiktoken_corebpe_encode(CoreBPE *ptr,
-                                const char *text,
-                                const char *const *allowed_special,
-                                size_t allowed_special_len,
-                                size_t *num_tokens);
+Rank *tiktoken_corebpe_encode(CoreBPE *ptr,
+                              const char *text,
+                              const char *const *allowed_special,
+                              size_t allowed_special_len,
+                              size_t *num_tokens);
 
-size_t *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
-                                                    const char *text,
-                                                    size_t *num_tokens);
+Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
+                                                  const char *text,
+                                                  size_t *num_tokens);
 
-char *tiktoken_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
+char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
 
-const char *tiktoken_c_version(void);
+

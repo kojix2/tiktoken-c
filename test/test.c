@@ -42,11 +42,11 @@ int main(int argc, char *argv[])
 
     CoreBPE *bpe = tiktoken_get_bpe_from_model(model);
     size_t n;
-    size_t *tokens = tiktoken_corebpe_encode_with_special_tokens(bpe, text, &n);
+    Rank *tokens = tiktoken_corebpe_encode_with_special_tokens(bpe, text, &n);
 
     for (size_t i = 0; i < n; i++)
     {
-        printf("%zu", tokens[i]);
+        printf("%u", tokens[i]);
         if (i < n - 1)
         {
             printf(" ");

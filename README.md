@@ -25,6 +25,9 @@ cargo build --release
 Please refer to the [tiktoken-rs documentation](https://docs.rs/tiktoken-rs/).
 
 ```c
+typedef void CoreBPE;
+typedef uint32_t Rank;
+
 typedef struct CFunctionCall {
   const char *name;
   const char *arguments;
@@ -36,6 +39,10 @@ typedef struct CChatCompletionRequestMessage {
   const char *name;
   const struct CFunctionCall *function_call;
 } CChatCompletionRequestMessage;
+
+const char *tiktoken_c_version(void);
+
+void tiktoken_init_logger(void);
 
 CoreBPE *tiktoken_r50k_base(void);
 
@@ -61,21 +68,19 @@ size_t tiktoken_get_chat_completion_max_tokens(const char *model,
                                                uint32_t num_messages,
                                                const struct CChatCompletionRequestMessage *messages);
 
-size_t *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
+Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
 
-size_t *tiktoken_corebpe_encode(CoreBPE *ptr,
-                                const char *text,
-                                const char *const *allowed_special,
-                                size_t allowed_special_len,
-                                size_t *num_tokens);
+Rank *tiktoken_corebpe_encode(CoreBPE *ptr,
+                              const char *text,
+                              const char *const *allowed_special,
+                              size_t allowed_special_len,
+                              size_t *num_tokens);
 
-size_t *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
-                                                    const char *text,
-                                                    size_t *num_tokens);
+Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
+                                                  const char *text,
+                                                  size_t *num_tokens);
 
-char *tiktoken_corebpe_decode(CoreBPE *ptr, const size_t *tokens, size_t num_tokens);
-
-const char *tiktoken_c_version(void);
+char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
 ```
 
 ## Language Bindings
@@ -107,7 +112,7 @@ cbindgen --config cbindgen.toml --crate tiktoken-c --output tiktoken.h
 cbindgen does not support opaque pointers and must be added.
 
 ```
-perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
+perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\ntypedef uint32_t Rank;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
 ```
 
 ## License
