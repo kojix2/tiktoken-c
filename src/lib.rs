@@ -5,31 +5,12 @@ use std::os::raw::c_char;
 use tiktoken_rs;
 use tiktoken_rs::CoreBPE;
 
+mod utils;
+use utils::c_str_to_string;
+
 #[no_mangle]
 pub extern "C" fn tiktoken_init_logger() {
     SimpleLogger::new().init().unwrap();
-}
-
-fn get_string_from_c_char(ptr: *const c_char) -> Result<String, std::str::Utf8Error> {
-    let c_str = unsafe { CStr::from_ptr(ptr) };
-    let str_slice = c_str.to_str()?;
-    Ok(str_slice.to_string())
-}
-
-fn c_str_to_string(ptr: *const c_char) -> Option<String> {
-    if ptr.is_null() {
-        return None;
-    }
-
-    let c_str = match get_string_from_c_char(ptr) {
-        Ok(str) => str,
-        Err(_) => {
-            warn!("Invalid UTF-8 sequence provided!");
-            return None;
-        }
-    };
-
-    Some(c_str)
 }
 
 #[no_mangle]
@@ -470,26 +451,13 @@ pub extern "C" fn tiktoken_c_version() -> *const c_char {
 mod tests {
     use super::*;
     use std::ffi::CString;
+    use utils::get_string_from_c_char;
 
     #[test]
     fn test_tiktoken_c_version() {
         let version = tiktoken_c_version();
         let version = get_string_from_c_char(version).unwrap();
         assert_eq!(version, env!("CARGO_PKG_VERSION"));
-    }
-
-    #[test]
-    fn test_get_string_from_c_char() {
-        let c_str = CString::new("I am a cat.").unwrap();
-        let str = get_string_from_c_char(c_str.as_ptr()).unwrap();
-        assert_eq!(str, "I am a cat.");
-    }
-
-    #[test]
-    fn test_c_str_to_string() {
-        let c_str = CString::new("I am a cat.").unwrap();
-        let str = c_str_to_string(c_str.as_ptr()).unwrap();
-        assert_eq!(str, "I am a cat.");
     }
 
     #[test]
