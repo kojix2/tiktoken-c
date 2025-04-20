@@ -3,6 +3,10 @@ name = "tiktoken-c"
 version = "0.3.0"
 edition = "2021"
 authors = ["kojix2 <2xijok@gmail.com>"]
+description = "Unofficial C API binding for tiktoken-rs"
+repository = "https://github.com/kojix2/tiktoken-c"
+keywords = ["tokenizer", "llm", "openai", "bpe", "ffi"]
+categories = ["api-bindings", "text-processing"]
 license = "MIT"
 publish = false
 
