@@ -22,7 +22,14 @@ cargo build --release
 
 ## API
 
-Please refer to the [tiktoken-rs documentation](https://docs.rs/tiktoken-rs/).
+See the [tiktoken-rs documentation](https://docs.rs/tiktoken-rs/) for detailed behavior.
+
+**Notes:**
+
+- All functions return `NULL` or `usize::MAX` on error (e.g., invalid arguments, unsupported model name, or internal failure).
+- The caller is responsible for freeing memory returned by `tiktoken_corebpe_decode` and all `Rank*` arrays (see "Memory Management" above).
+- Use `tiktoken_destroy_corebpe` to free `CoreBPE*` objects.
+- Model names must match those supported by tiktoken-rs. If an unsupported model is specified, the function will return an error value.
 
 ```c
 typedef void CoreBPE;
