@@ -281,7 +281,7 @@ pub extern "C" fn tiktoken_corebpe_encode(
         allowed_special_hash_set
     };
     let corebpe = unsafe { &mut *ptr };
-    let encoded = corebpe.encode(text, allowed_special);
+    let encoded = corebpe.encode(text, &allowed_special).0;
     unsafe {
         if !num_tokens.is_null() {
             *num_tokens = encoded.len();
