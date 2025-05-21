@@ -14,22 +14,14 @@ Download from [GitHub Releases](https://github.com/kojix2/tiktoken-c/releases) o
 git clone https://github.com/kojix2/tiktoken-c
 cd tiktoken-c
 cargo build --release
-# Output: target/release/libtiktoken_c.so (Linux), .dylib (macOS), or .dll (Windows)
+# Output: target/release/libtiktoken_c.{so,dylib,dll}
 ```
 
-## API
+## C API Overview
 
-See [tiktoken-rs documentation](https://docs.rs/tiktoken-rs/) for detailed behavior.
+The API mirrors the functionality of [tiktoken-rs](https://docs.rs/tiktoken-rs/). Below are key types and functions.
 
-### Memory Management
-
-- Free memory from `tiktoken_corebpe_decode` and `Rank*` arrays with `free()`
-- Free `CoreBPE*` objects with `tiktoken_destroy_corebpe`
-
-### Error Handling
-
-- Functions return `NULL` or `usize::MAX` on error
-- Model names must match those supported by tiktoken-rs
+### Types
 
 ```c
 typedef void CoreBPE;
@@ -46,49 +38,78 @@ typedef struct CChatCompletionRequestMessage {
   const char *name;
   const struct CFunctionCall *function_call;
 } CChatCompletionRequestMessage;
+```
 
-// Library version
+### Core Functions
+
+#### Version / Init
+
+```c
 const char *tiktoken_c_version(void);
-
-// Initialize logger
 void tiktoken_init_logger(void);
+```
 
-// Get tokenizers
-CoreBPE *tiktoken_r50k_base(void);     // GPT-3 models
-CoreBPE *tiktoken_p50k_base(void);     // Code models, text-davinci-002/003
-CoreBPE *tiktoken_p50k_edit(void);     // Edit models
-CoreBPE *tiktoken_cl100k_base(void);   // ChatGPT models, embeddings
-CoreBPE *tiktoken_o200k_base(void);    // GPT-4o models
+#### Load Tokenizer
 
-// Free a CoreBPE instance
-void tiktoken_destroy_corebpe(CoreBPE *ptr);
-
-// Get tokenizer for a specific model
+```c
 CoreBPE *tiktoken_get_bpe_from_model(const char *model);
+CoreBPE *tiktoken_r50k_base(void);   // GPT-3 models
+CoreBPE *tiktoken_p50k_base(void);   // Code models
+CoreBPE *tiktoken_p50k_edit(void);   // Edit models
+CoreBPE *tiktoken_cl100k_base(void); // ChatGPT models
+CoreBPE *tiktoken_o200k_base(void);  // GPT-4o models
+```
 
-// Token calculations
-size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt);
-size_t tiktoken_num_tokens_from_messages(const char *model,
-                                         uint32_t num_messages,
-                                         const struct CChatCompletionRequestMessage *messages);
-size_t tiktoken_get_chat_completion_max_tokens(const char *model,
-                                               uint32_t num_messages,
-                                               const struct CChatCompletionRequestMessage *messages);
+#### Encoding & Decoding
 
-// Encoding/decoding
-Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
-Rank *tiktoken_corebpe_encode(CoreBPE *ptr,
-                              const char *text,
+```c
+Rank *tiktoken_corebpe_encode(CoreBPE *ptr, const char *text,
                               const char *const *allowed_special,
                               size_t allowed_special_len,
                               size_t *num_tokens);
-Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
-                                                  const char *text,
-                                                  size_t *num_tokens);
+
+Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
+Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr, const char *text, size_t *num_tokens);
 char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
 ```
 
-## Example: Counting Tokens
+#### Token Counting
+
+```c
+size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt);
+
+size_t tiktoken_num_tokens_from_messages(const char *model,
+                                         uint32_t num_messages,
+                                         const CChatCompletionRequestMessage *messages);
+
+size_t tiktoken_get_chat_completion_max_tokens(const char *model,
+                                               uint32_t num_messages,
+                                               const CChatCompletionRequestMessage *messages);
+```
+
+#### Cleanup
+
+```c
+void tiktoken_destroy_corebpe(CoreBPE *ptr);
+```
+
+## Memory Management
+
+Be sure to free memory returned from the API appropriately:
+
+| Function                                              | Return Type       | Free with                    |
+| ----------------------------------------------------- | ----------------- | ---------------------------- |
+| `*_encode*` / `*_decode`                              | `Rank*` / `char*` | `free()`                     |
+| `tiktoken_*_base()` / `tiktoken_get_bpe_from_model()` | `CoreBPE*`        | `tiktoken_destroy_corebpe()` |
+
+**Important Notes:**
+
+- Never use `free()` on a `CoreBPE*`; use `tiktoken_destroy_corebpe()`.
+- Always `free()` the result of `encode`/`decode`.
+
+## Example
+
+### Count Tokens
 
 ```c
 #include <stdio.h>
@@ -115,7 +136,7 @@ int main() {
 
 ## Language Bindings
 
-| Language | Bindings                                             |
+| Language | Repository                                           |
 | -------- | ---------------------------------------------------- |
 | Crystal  | [tiktoken-cr](https://github.com/kojix2/tiktoken-cr) |
 
@@ -126,9 +147,11 @@ int main() {
 cargo test
 cd test && ./test.sh
 
-# Generate header file
+# Generate header
 cargo install --force cbindgen
 cbindgen --config cbindgen.toml --crate tiktoken-c --output tiktoken.h
+
+# Patch header to insert typedefs for CoreBPE and Rank
 perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\ntypedef uint32_t Rank;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
 ```
 
