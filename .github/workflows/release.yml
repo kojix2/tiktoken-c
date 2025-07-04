@@ -12,41 +12,61 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            lib_name: libtiktoken_c
-            lib_ext: so
+            archive_name: tiktoken-c-linux-x64
+            archive_ext: tar.gz
           - os: macos-latest
-            lib_name: libtiktoken_c
-            lib_ext: dylib
+            archive_name: tiktoken-c-macos-x64
+            archive_ext: tar.gz
           - os: windows-latest
-            lib_name: tiktoken_c
-            lib_ext: dll
+            archive_name: tiktoken-c-windows-x64
+            archive_ext: zip
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build default (no logging)
+      - name: Build default version
         run: cargo build --release --verbose
 
-      - name: Build with logging
+      - name: Build logging version
         run: cargo build --release --features logging --verbose
 
-      - name: Prepare release files
+      - name: Create release package
         shell: bash
         run: |
-          # Copy default variant
+          mkdir -p release_package
+          cp tiktoken.h release_package/
+          cp README.md release_package/
+          cp LICENSE.txt release_package/
+
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_release.${{ matrix.lib_ext }}
-            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }}.lib target/release/${{ matrix.lib_name }}_release.${{ matrix.lib_ext }}.lib
-            # Copy debug variant  
-            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_debug.${{ matrix.lib_ext }}
-            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }}.lib target/release/${{ matrix.lib_name }}_debug.${{ matrix.lib_ext }}.lib
+            # Default version
+            cp target/release/tiktoken_c.dll release_package/
+            cp target/release/tiktoken_c.dll.lib release_package/
+            # Logging version
+            cp target/release/tiktoken_c.dll release_package/tiktoken_c_debug.dll
+            cp target/release/tiktoken_c.dll.lib release_package/tiktoken_c_debug.dll.lib
           else
-            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_release.${{ matrix.lib_ext }}
-            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_debug.${{ matrix.lib_ext }}
+            # Default version
+            cp target/release/libtiktoken_c.* release_package/
+            # Logging version (rename to avoid overwrite)
+            for file in target/release/libtiktoken_c.*; do
+              ext="${file##*.}"
+              cp "$file" "release_package/libtiktoken_c_debug.$ext"
+            done
           fi
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: tar -czf ${{ matrix.archive_name }}.${{ matrix.archive_ext }} -C release_package .
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd release_package
+          7z a ../${{ matrix.archive_name }}.${{ matrix.archive_ext }} *
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: target/release/${{ matrix.lib_name }}_*
+          files: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
