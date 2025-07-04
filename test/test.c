@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
 
     free(text); // do not forget to free allocated memory
     free(tokens);
+    tiktoken_destroy_corebpe(bpe); // do not forget to free CoreBPE instance
 
     return 0;
 }
