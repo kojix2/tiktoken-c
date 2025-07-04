@@ -6,23 +6,47 @@ on:
       - "v*"
 
 jobs:
-  build_release_x64:
-    name: Build Release x64
+  build_release:
+    name: Build Release
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            lib_name: libtiktoken_c
+            lib_ext: so
+          - os: macos-latest
+            lib_name: libtiktoken_c
+            lib_ext: dylib
+          - os: windows-latest
+            lib_name: tiktoken_c
+            lib_ext: dll
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Build
+
+      - name: Build default (no logging)
         run: cargo build --release --verbose
 
-      - name: Upload Release Asset
+      - name: Build with logging
+        run: cargo build --release --features logging --verbose
+
+      - name: Prepare release files
+        shell: bash
+        run: |
+          # Copy default variant
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_release.${{ matrix.lib_ext }}
+            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }}.lib target/release/${{ matrix.lib_name }}_release.${{ matrix.lib_ext }}.lib
+            # Copy debug variant  
+            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_debug.${{ matrix.lib_ext }}
+            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }}.lib target/release/${{ matrix.lib_name }}_debug.${{ matrix.lib_ext }}.lib
+          else
+            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_release.${{ matrix.lib_ext }}
+            cp target/release/${{ matrix.lib_name }}.${{ matrix.lib_ext }} target/release/${{ matrix.lib_name }}_debug.${{ matrix.lib_ext }}
+          fi
+
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            target/release/libtiktoken_c.so
-            target/release/libtiktoken_c.dylib
-            target/release/tiktoken_c.dll
-            target/release/tiktoken_c.dll.lib
+          files: target/release/${{ matrix.lib_name }}_*
