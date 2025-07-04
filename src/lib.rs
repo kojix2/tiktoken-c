@@ -113,7 +113,14 @@ pub extern "C" fn tiktoken_num_tokens_from_messages(
         let slice = std::slice::from_raw_parts(messages, num_messages as usize);
         let mut messages_vec = Vec::with_capacity(num_messages as usize);
         for message in slice {
-            let role = c_str_to_string(message.role.clone()).unwrap_or_default();
+            let role = match c_str_to_string(message.role.clone()) {
+                Some(s) => s,
+                None => {
+                    #[cfg(feature = "logging")]  
+                    warn!("Invalid UTF-8 sequence provided for role!");
+                    return usize::MAX;
+                }
+            };
             let content = c_str_to_string(message.content.clone());
             let name = c_str_to_string(message.name.clone());
             let function_call = if !message.function_call.is_null() {
@@ -124,8 +131,22 @@ pub extern "C" fn tiktoken_num_tokens_from_messages(
                     warn!("Null pointer provided for function_call name or arguments!");
                     return usize::MAX;
                 }
-                let fun_name = c_str_to_string((*fun_call).name).unwrap_or_default();
-                let fun_args = c_str_to_string((*fun_call).arguments).unwrap_or_default();
+                let fun_name = match c_str_to_string((*fun_call).name) {
+                    Some(s) => s,
+                    None => {
+                        #[cfg(feature = "logging")]  
+                        warn!("Invalid UTF-8 sequence provided for function_call name!");
+                        return usize::MAX;
+                    }
+                };
+                let fun_args = match c_str_to_string((*fun_call).arguments) {
+                    Some(s) => s,
+                    None => {
+                        #[cfg(feature = "logging")]  
+                        warn!("Invalid UTF-8 sequence provided for function_call arguments!");
+                        return usize::MAX;
+                    }
+                };
                 Some(tiktoken_rs::FunctionCall {
                     name: fun_name,
                     arguments: fun_args,
@@ -188,7 +209,14 @@ pub extern "C" fn tiktoken_get_chat_completion_max_tokens(
                 warn!("Null pointer provided for role!");
                 return usize::MAX;
             }
-            let role = c_str_to_string(message.role.clone()).unwrap_or_default();
+            let role = match c_str_to_string(message.role.clone()) {
+                Some(s) => s,
+                None => {
+                    #[cfg(feature = "logging")]  
+                    warn!("Invalid UTF-8 sequence provided for role!");
+                    return usize::MAX;
+                }
+            };
             let content = c_str_to_string(message.content.clone());
             let name = c_str_to_string(message.name.clone());
             let function_call = if !message.function_call.is_null() {
@@ -199,8 +227,22 @@ pub extern "C" fn tiktoken_get_chat_completion_max_tokens(
                     warn!("Null pointer provided for function_call name or arguments!");
                     return usize::MAX;
                 }
-                let fun_name = c_str_to_string((*fun_call).name).unwrap_or_default();
-                let fun_args = c_str_to_string((*fun_call).arguments).unwrap_or_default();
+                let fun_name = match c_str_to_string((*fun_call).name) {
+                    Some(s) => s,
+                    None => {
+                        #[cfg(feature = "logging")]  
+                        warn!("Invalid UTF-8 sequence provided for function_call name!");
+                        return usize::MAX;
+                    }
+                };
+                let fun_args = match c_str_to_string((*fun_call).arguments) {
+                    Some(s) => s,
+                    None => {
+                        #[cfg(feature = "logging")]  
+                        warn!("Invalid UTF-8 sequence provided for function_call arguments!");
+                        return usize::MAX;
+                    }
+                };
                 Some(tiktoken_rs::FunctionCall {
                     name: fun_name,
                     arguments: fun_args,
@@ -823,5 +865,111 @@ mod tests {
         let decoded = decoded.to_str().unwrap();
         assert_eq!(decoded, "I am a cat. <|endoftext|>");
         tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_num_tokens_from_messages_with_function_call() {
+        let model = CString::new("gpt-4").unwrap();
+        let role = CString::new("assistant").unwrap();
+        let content = CString::new("I'll help you with that.").unwrap();
+        let fun_name = CString::new("get_weather").unwrap();
+        let fun_args = CString::new("{\"location\": \"Tokyo\"}").unwrap();
+        let function_call = CFunctionCall {
+            name: fun_name.as_ptr(),
+            arguments: fun_args.as_ptr(),
+        };
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: &function_call,
+        };
+        let messages = vec![message];
+        let num_tokens = tiktoken_num_tokens_from_messages(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        // This should succeed and return a valid token count
+        assert_ne!(num_tokens, usize::MAX);
+        assert!(num_tokens > 0);
+    }
+
+    #[test]
+    fn test_num_tokens_from_messages_function_call_null_name() {
+        let model = CString::new("gpt-4").unwrap();
+        let role = CString::new("assistant").unwrap();
+        let content = CString::new("I'll help you with that.").unwrap();
+        let fun_args = CString::new("{\"location\": \"Tokyo\"}").unwrap();
+        let function_call = CFunctionCall {
+            name: std::ptr::null(),
+            arguments: fun_args.as_ptr(),
+        };
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: &function_call,
+        };
+        let messages = vec![message];
+        let num_tokens = tiktoken_num_tokens_from_messages(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(num_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_chat_completion_max_tokens_with_function_call() {
+        let model = CString::new("gpt-4").unwrap();
+        let role = CString::new("assistant").unwrap();
+        let content = CString::new("I'll help you with that.").unwrap();
+        let fun_name = CString::new("get_weather").unwrap();
+        let fun_args = CString::new("{\"location\": \"Tokyo\"}").unwrap();
+        let function_call = CFunctionCall {
+            name: fun_name.as_ptr(),
+            arguments: fun_args.as_ptr(),
+        };
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: &function_call,
+        };
+        let messages = vec![message];
+        let max_tokens = tiktoken_get_chat_completion_max_tokens(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        // This should succeed and return a valid token count
+        assert_ne!(max_tokens, usize::MAX);
+        assert!(max_tokens > 0);
+    }
+
+    #[test]
+    fn test_get_chat_completion_max_tokens_function_call_null_arguments() {
+        let model = CString::new("gpt-4").unwrap();
+        let role = CString::new("assistant").unwrap();
+        let content = CString::new("I'll help you with that.").unwrap();
+        let fun_name = CString::new("get_weather").unwrap();
+        let function_call = CFunctionCall {
+            name: fun_name.as_ptr(),
+            arguments: std::ptr::null(),
+        };
+        let message = CChatCompletionRequestMessage {
+            role: role.as_ptr(),
+            content: content.as_ptr(),
+            name: std::ptr::null(),
+            function_call: &function_call,
+        };
+        let messages = vec![message];
+        let max_tokens = tiktoken_get_chat_completion_max_tokens(
+            model.as_ptr(),
+            messages.len() as u32,
+            messages.as_ptr(),
+        );
+        assert_eq!(max_tokens, usize::MAX);
     }
 }
