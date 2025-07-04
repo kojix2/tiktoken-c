@@ -107,6 +107,11 @@ pub extern "C" fn tiktoken_num_tokens_from_messages(
             let name = c_str_to_string(message.name.clone());
             let function_call = if !message.function_call.is_null() {
                 let fun_call = message.function_call;
+                // Check if name and arguments pointers are valid
+                if (*fun_call).name.is_null() || (*fun_call).arguments.is_null() {
+                    warn!("Null pointer provided for function_call name or arguments!");
+                    return usize::MAX;
+                }
                 let fun_name = c_str_to_string((*fun_call).name).unwrap_or_default();
                 let fun_args = c_str_to_string((*fun_call).arguments).unwrap_or_default();
                 Some(tiktoken_rs::FunctionCall {
@@ -171,6 +176,11 @@ pub extern "C" fn tiktoken_get_chat_completion_max_tokens(
             let name = c_str_to_string(message.name.clone());
             let function_call = if !message.function_call.is_null() {
                 let fun_call = message.function_call;
+                // Check if name and arguments pointers are valid
+                if (*fun_call).name.is_null() || (*fun_call).arguments.is_null() {
+                    warn!("Null pointer provided for function_call name or arguments!");
+                    return usize::MAX;
+                }
                 let fun_name = c_str_to_string((*fun_call).name).unwrap_or_default();
                 let fun_args = c_str_to_string((*fun_call).arguments).unwrap_or_default();
                 Some(tiktoken_rs::FunctionCall {
