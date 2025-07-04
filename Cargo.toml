@@ -13,10 +13,14 @@ publish = false
 [lib]
 crate-type = ["cdylib", "staticlib"]
 
+[features]  
+default = []  
+logging = ["log", "simple_logger"]  
+
 [dependencies]
 tiktoken-rs = "0.7"
-log = "0.4"
-simple_logger = "4.3"
+log = { version = "0.4", optional = true }  
+simple_logger = { version = "4.3", optional = true }
 
 [profile.dev]
 rpath = true
@@ -24,4 +28,7 @@ rpath = true
 [profile.release]
 lto = true
 codegen-units = 1
+opt-level = 3
+strip = true
+panic = "abort"
 rpath = true

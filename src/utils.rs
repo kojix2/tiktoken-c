@@ -1,3 +1,4 @@
+#[cfg(feature = "logging")]  
 use log::warn;
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -16,6 +17,7 @@ pub fn c_str_to_string(ptr: *const c_char) -> Option<String> {
     let c_str = match get_string_from_c_char(ptr) {
         Ok(str) => str,
         Err(_) => {
+            #[cfg(feature = "logging")]  
             warn!("Invalid UTF-8 sequence provided!");
             return None;
         }

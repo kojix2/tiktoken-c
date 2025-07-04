@@ -1,3 +1,4 @@
+#[cfg(feature = "logging")]  
 use log::warn;
 use std::ffi::{c_char, CStr};
 use tiktoken_rs::CoreBPE;
@@ -59,6 +60,7 @@ pub extern "C" fn tiktoken_destroy_corebpe(ptr: *mut CoreBPE) {
 #[no_mangle]
 pub extern "C" fn tiktoken_get_bpe_from_model(model: *const c_char) -> *mut CoreBPE {
     if model.is_null() {
+        #[cfg(feature = "logging")]  
         warn!("Null pointer provided for model!");
         return std::ptr::null_mut();
     }
@@ -67,6 +69,7 @@ pub extern "C" fn tiktoken_get_bpe_from_model(model: *const c_char) -> *mut Core
         match raw.to_str() {
             Ok(valid_str) => valid_str,
             Err(_) => {
+                #[cfg(feature = "logging")]  
                 warn!("Invalid UTF-8 sequence provided for model!");
                 return std::ptr::null_mut();
             }
@@ -79,6 +82,7 @@ pub extern "C" fn tiktoken_get_bpe_from_model(model: *const c_char) -> *mut Core
             Box::into_raw(boxed)
         }
         Err(_) => {
+            #[cfg(feature = "logging")]  
             warn!("Failed to get BPE from model!");
             std::ptr::null_mut()
         }
