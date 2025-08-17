@@ -450,6 +450,17 @@ pub extern "C" fn tiktoken_corebpe_decode(
 }
 
 #[no_mangle]
+pub extern "C" fn tiktoken_corebpe_free_string(ptr: *mut std::os::raw::c_char) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe {
+        // Rebuild the CString so Rust will drop it properly
+        let _ = std::ffi::CString::from_raw(ptr);
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn tiktoken_c_version() -> *const c_char {
     static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
     VERSION.as_ptr() as *const c_char
