@@ -21,7 +21,7 @@ int main()
   if (tokens != NULL)
   {
     printf("Token count: %zu\n", num_tokens);
-    free(tokens);
+    tiktoken_free(tokens);
   }
   else
   {

@@ -6,6 +6,9 @@ use std::ffi::{c_char, CStr};
 use tiktoken_rs;
 use tiktoken_rs::{CoreBPE, Rank};
 
+mod alloc;
+use alloc::{cstring_into_malloced, malloc_copy};
+
 mod corebpe;
 // use corebpe::{
 //     tiktoken_cl100k_base, tiktoken_destroy_corebpe, tiktoken_get_bpe_from_model,
@@ -303,8 +306,7 @@ pub extern "C" fn tiktoken_corebpe_encode_ordinary(
             *num_tokens = encoded.len();
         }
     };
-    let boxed = encoded.into_boxed_slice();
-    Box::into_raw(boxed) as *mut Rank
+    malloc_copy::<Rank>(&encoded)
 }
 
 // pub fn encode(&self, text: &str, allowed_special: HashSet<&str>) -> Vec<usize>
@@ -366,8 +368,7 @@ pub extern "C" fn tiktoken_corebpe_encode(
             *num_tokens = encoded.len();
         }
     };
-    let boxed = encoded.into_boxed_slice();
-    Box::into_raw(boxed) as *mut Rank
+    malloc_copy::<Rank>(&encoded)
 }
 
 #[no_mangle]
@@ -404,8 +405,7 @@ pub extern "C" fn tiktoken_corebpe_encode_with_special_tokens(
             *num_tokens = encoded.len();
         }
     };
-    let boxed = encoded.into_boxed_slice();
-    Box::into_raw(boxed) as *mut Rank
+    malloc_copy::<Rank>(&encoded)
 }
 
 #[no_mangle]
@@ -445,19 +445,7 @@ pub extern "C" fn tiktoken_corebpe_decode(
             return std::ptr::null_mut();
         }
     };
-    let ptr = c_str.into_raw();
-    ptr
-}
-
-#[no_mangle]
-pub extern "C" fn tiktoken_corebpe_free_string(ptr: *mut std::os::raw::c_char) {
-    if ptr.is_null() {
-        return;
-    }
-    unsafe {
-        // Rebuild the CString so Rust will drop it properly
-        let _ = std::ffi::CString::from_raw(ptr);
-    }
+    cstring_into_malloced(c_str)
 }
 
 #[no_mangle]

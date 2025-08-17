@@ -92,21 +92,23 @@ size_t tiktoken_get_chat_completion_max_tokens(const char *model,
 
 ```c
 void tiktoken_destroy_corebpe(CoreBPE *ptr);
+void tiktoken_free(void *ptr);
 ```
 
 ## Memory Management
 
-Be sure to free memory returned from the API appropriately:
+Use `tiktoken_free()` to release any heap memory returned by the library:
 
 | Function                                              | Return Type       | Free with                    |
 | ----------------------------------------------------- | ----------------- | ---------------------------- |
-| `*_encode*` / `*_decode`                              | `Rank*` / `char*` | `free()`                     |
+| `*_encode*` / `*_decode`                              | `Rank*` / `char*` | `tiktoken_free(ptr)`         |
 | `tiktoken_*_base()` / `tiktoken_get_bpe_from_model()` | `CoreBPE*`        | `tiktoken_destroy_corebpe()` |
 
-**Important Notes:**
+Important Notes:
 
-- Never use `free()` on a `CoreBPE*`; use `tiktoken_destroy_corebpe()`.
-- Always `free()` the result of `encode`/`decode`.
+- Do NOT pass the pointer returned by `tiktoken_c_version()` to any free function (static string).
+- On Windows, always prefer `tiktoken_free()` rather than `free()`.
+- When encoding results in 0 tokens, the returned pointer may be NULL. Always check for NULL before use.
 
 ## Example
 
@@ -127,7 +129,7 @@ int main() {
 
   if (tokens) {
     printf("Token count: %zu\n", num_tokens);
-    free(tokens);
+    tiktoken_free(tokens);
   }
 
   tiktoken_destroy_corebpe(bpe);

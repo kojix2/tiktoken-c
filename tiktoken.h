@@ -64,6 +64,6 @@ Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
                                                   size_t *num_tokens);
 
 char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
-void tiktoken_corebpe_free_string(char *ptr);
 
+void tiktoken_free(void *ptr);
 
