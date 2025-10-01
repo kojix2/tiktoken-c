@@ -67,6 +67,6 @@ jobs:
           7z a ../${{ matrix.archive_name }}.${{ matrix.archive_ext }} *
 
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2
         with:
           files: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
