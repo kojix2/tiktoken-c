@@ -48,6 +48,14 @@ pub extern "C" fn tiktoken_o200k_base() -> *mut CoreBPE {
 }
 
 #[no_mangle]
+pub extern "C" fn tiktoken_o200k_harmony() -> *mut CoreBPE {
+    let bpe = tiktoken_rs::o200k_harmony();
+    let corebpe = bpe.unwrap();
+    let boxed = Box::new(corebpe);
+    Box::into_raw(boxed)
+}
+
+#[no_mangle]
 pub extern "C" fn tiktoken_destroy_corebpe(ptr: *mut CoreBPE) {
     if ptr.is_null() {
         return;
@@ -125,6 +133,13 @@ mod tests {
     #[test]
     fn test_o200k_base() {
         let corebpe = tiktoken_o200k_base();
+        assert!(!corebpe.is_null());
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_o200k_harmony() {
+        let corebpe = tiktoken_o200k_harmony();
         assert!(!corebpe.is_null());
         tiktoken_destroy_corebpe(corebpe);
     }
