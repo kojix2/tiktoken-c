@@ -9,65 +9,73 @@
 #include <stdlib.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-typedef void CoreBPE;
-typedef uint32_t Rank;
+  typedef void CoreBPE;
+  typedef uint32_t Rank;
 
-typedef struct CFunctionCall {
-  const char *name;
-  const char *arguments;
-} CFunctionCall;
+  typedef struct CFunctionCall
+  {
+    const char *name;
+    const char *arguments;
+  } CFunctionCall;
 
-typedef struct CChatCompletionRequestMessage {
-  const char *role;
-  const char *content;
-  const char *name;
-  const struct CFunctionCall *function_call;
-} CChatCompletionRequestMessage;
+  typedef struct CChatCompletionRequestMessage
+  {
+    const char *role;
+    const char *content;
+    const char *name;
+    const struct CFunctionCall *function_call;
+  } CChatCompletionRequestMessage;
 
-const char *tiktoken_c_version(void);
+  const char *tiktoken_c_version(void);
 
-void tiktoken_init_logger(void);
+  void tiktoken_init_logger(void);
 
-CoreBPE *tiktoken_get_bpe_from_model(const char *model);
+  CoreBPE *tiktoken_get_bpe_from_model(const char *model);
 
-CoreBPE *tiktoken_r50k_base(void);
+  CoreBPE *tiktoken_r50k_base(void);
 
-CoreBPE *tiktoken_p50k_base(void);
+  CoreBPE *tiktoken_p50k_base(void);
 
-CoreBPE *tiktoken_p50k_edit(void);
+  CoreBPE *tiktoken_p50k_edit(void);
 
-CoreBPE *tiktoken_cl100k_base(void);
+  CoreBPE *tiktoken_cl100k_base(void);
 
-CoreBPE *tiktoken_o200k_base(void);
+  CoreBPE *tiktoken_o200k_base(void);
 
-Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
+  CoreBPE *tiktoken_o200k_harmony(void);
 
-Rank *tiktoken_corebpe_encode(CoreBPE *ptr,
-                              const char *text,
-                              const char *const *allowed_special,
-                              size_t allowed_special_len,
-                              size_t *num_tokens);
-                              
-Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
-                                                  const char *text,
-                                                  size_t *num_tokens);
+  Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
 
-char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
+  Rank *tiktoken_corebpe_encode(CoreBPE *ptr,
+                                const char *text,
+                                const char *const *allowed_special,
+                                size_t allowed_special_len,
+                                size_t *num_tokens);
 
+  Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
+                                                    const char *text,
+                                                    size_t *num_tokens);
 
-size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt);
+  char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
 
-size_t tiktoken_num_tokens_from_messages(const char *model,
-                                         uint32_t num_messages,
-                                         const struct CChatCompletionRequestMessage *messages);
+  size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt);
 
-size_t tiktoken_get_chat_completion_max_tokens(const char *model,
-                                               uint32_t num_messages,
-                                               const struct CChatCompletionRequestMessage *messages);
+  size_t tiktoken_num_tokens_from_messages(const char *model,
+                                           uint32_t num_messages,
+                                           const struct CChatCompletionRequestMessage *messages);
 
-void tiktoken_free(void *ptr);
+  size_t tiktoken_get_chat_completion_max_tokens(const char *model,
+                                                 uint32_t num_messages,
+                                                 const struct CChatCompletionRequestMessage *messages);
 
-void tiktoken_destroy_corebpe(CoreBPE *ptr);
+  void tiktoken_free(void *ptr);
+
+  void tiktoken_destroy_corebpe(CoreBPE *ptr);
+
+#ifdef __cplusplus
+}
+#endif
