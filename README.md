@@ -5,7 +5,7 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kojix2/tiktoken-c)
 
 - C API for [Tiktoken](https://github.com/openai/tiktoken), OpenAI's tokenizer
-- Compatible with [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs) 0.7.0+
+- Compatible with [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs) 0.9.1
 
 ## Installation
 
@@ -150,6 +150,9 @@ int main() {
 # Run tests
 cargo test
 cd test && ./test.sh
+
+# Test with release build
+cd test && BUILD_DIR=release ./test.sh
 
 # Generate header
 cargo install --force cbindgen
