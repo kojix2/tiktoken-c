@@ -54,11 +54,12 @@ void tiktoken_init_logger(void);
 
 ```c
 CoreBPE *tiktoken_get_bpe_from_model(const char *model);
-CoreBPE *tiktoken_r50k_base(void);   // GPT-3 models
-CoreBPE *tiktoken_p50k_base(void);   // Code models
-CoreBPE *tiktoken_p50k_edit(void);   // Edit models
-CoreBPE *tiktoken_cl100k_base(void); // ChatGPT models
-CoreBPE *tiktoken_o200k_base(void);  // GPT-4o models
+CoreBPE *tiktoken_r50k_base(void);     // GPT-3 models
+CoreBPE *tiktoken_p50k_base(void);     // Code models
+CoreBPE *tiktoken_p50k_edit(void);     // Edit models
+CoreBPE *tiktoken_cl100k_base(void);   // ChatGPT models
+CoreBPE *tiktoken_o200k_base(void);    // GPT-5, GPT-4.1, GPT-4o, o4, o3, and o1 models
+CoreBPE *tiktoken_o200k_harmony(void); // gpt-oss models, gpt-oss-20b, gpt-oss-120b
 ```
 
 #### Encoding & Decoding
