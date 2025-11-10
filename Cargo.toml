@@ -18,7 +18,7 @@ default = []
 logging = ["log", "simple_logger"]  
 
 [dependencies]
-tiktoken-rs = "0.7"
+tiktoken-rs = "0.8"
 log = { version = "0.4", optional = true }  
 simple_logger = { version = "5.0", optional = true }
 libc = "0.2"
