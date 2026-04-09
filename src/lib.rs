@@ -72,119 +72,231 @@ pub extern "C" fn tiktoken_get_completion_max_tokens(
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Default)]
-pub struct CFunctionCall {
-    pub name: *const c_char,
-    pub arguments: *const c_char,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Default)]
 pub struct CChatCompletionRequestMessage {
-    pub role: *const c_char,
-    pub content: *const c_char,
-    pub name: *const c_char,
-    pub function_call: *const CFunctionCall,
-    pub tool_calls: *const CFunctionCall,
-    pub num_tool_calls: usize,
-    pub refusal: *const c_char,
+    inner: tiktoken_rs::ChatCompletionRequestMessage,
 }
 
-fn parse_function_call(function_call: &CFunctionCall, _field_name: &str) -> Result<tiktoken_rs::FunctionCall, ()> {
-    if function_call.name.is_null() || function_call.arguments.is_null() {
+fn parse_required_string(ptr: *const c_char, _field_name: &str) -> Result<String, ()> {
+    if ptr.is_null() {
         #[cfg(feature = "logging")]
-        warn!("Null pointer provided for {} name or arguments!", _field_name);
+        warn!("Null pointer provided for {}!", _field_name);
         return Err(());
     }
-
-    let name = match c_str_to_string(function_call.name) {
-        Some(s) => s,
+    match c_str_to_string(ptr) {
+        Some(value) => Ok(value),
         None => {
             #[cfg(feature = "logging")]
-            warn!("Invalid UTF-8 sequence provided for {} name!", _field_name);
-            return Err(());
+            warn!("Invalid UTF-8 sequence provided for {}!", _field_name);
+            Err(())
         }
-    };
-    let arguments = match c_str_to_string(function_call.arguments) {
-        Some(s) => s,
+    }
+}
+
+fn parse_optional_string(ptr: *const c_char, _field_name: &str) -> Result<Option<String>, ()> {
+    if ptr.is_null() {
+        return Ok(None);
+    }
+    match c_str_to_string(ptr) {
+        Some(value) => Ok(Some(value)),
         None => {
             #[cfg(feature = "logging")]
-            warn!("Invalid UTF-8 sequence provided for {} arguments!", _field_name);
-            return Err(());
+            warn!("Invalid UTF-8 sequence provided for {}!", _field_name);
+            Err(())
         }
-    };
+    }
+}
 
-    Ok(tiktoken_rs::FunctionCall { name, arguments })
+fn parse_function_call(
+    name: *const c_char,
+    arguments: *const c_char,
+    field_name: &str,
+) -> Result<tiktoken_rs::FunctionCall, ()> {
+    Ok(tiktoken_rs::FunctionCall {
+        name: parse_required_string(name, &format!("{} name", field_name))?,
+        arguments: parse_required_string(arguments, &format!("{} arguments", field_name))?,
+    })
 }
 
 fn parse_chat_messages(
     num_messages: u32,
-    messages: *const CChatCompletionRequestMessage,
+    messages: *const *mut CChatCompletionRequestMessage,
 ) -> Result<Vec<tiktoken_rs::ChatCompletionRequestMessage>, ()> {
     let slice = unsafe { std::slice::from_raw_parts(messages, num_messages as usize) };
     let mut messages_vec = Vec::with_capacity(num_messages as usize);
 
-    for message in slice {
-        if message.role.is_null() {
+    for &message in slice {
+        if message.is_null() {
             #[cfg(feature = "logging")]
-            warn!("Null pointer provided for role!");
+            warn!("Null pointer provided for message!");
             return Err(());
         }
-        let role = match c_str_to_string(message.role) {
-            Some(s) => s,
-            None => {
-                #[cfg(feature = "logging")]
-                warn!("Invalid UTF-8 sequence provided for role!");
-                return Err(());
-            }
-        };
-
-        let content = c_str_to_string(message.content);
-        let name = c_str_to_string(message.name);
-        let refusal = c_str_to_string(message.refusal);
-
-        let function_call = if message.function_call.is_null() {
-            None
-        } else {
-            Some(parse_function_call(unsafe { &*message.function_call }, "function_call")?)
-        };
-
-        let tool_calls = if message.num_tool_calls == 0 {
-            Vec::new()
-        } else {
-            if message.tool_calls.is_null() {
-                #[cfg(feature = "logging")]
-                warn!("Null pointer provided for tool_calls!");
-                return Err(());
-            }
-            let tool_calls = unsafe {
-                std::slice::from_raw_parts(message.tool_calls, message.num_tool_calls)
-            };
-            let mut parsed = Vec::with_capacity(message.num_tool_calls);
-            for tool_call in tool_calls {
-                parsed.push(parse_function_call(tool_call, "tool_call")?);
-            }
-            parsed
-        };
-
-        messages_vec.push(tiktoken_rs::ChatCompletionRequestMessage {
-            role,
-            content,
-            name,
-            function_call,
-            tool_calls,
-            refusal,
-        });
+        messages_vec.push(unsafe { (&*message).inner.clone() });
     }
 
     Ok(messages_vec)
 }
 
 #[no_mangle]
+pub extern "C" fn tiktoken_chat_message_new(
+    role: *const c_char,
+) -> *mut CChatCompletionRequestMessage {
+    let role = match parse_required_string(role, "role") {
+        Ok(role) => role,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    Box::into_raw(Box::new(CChatCompletionRequestMessage {
+        inner: tiktoken_rs::ChatCompletionRequestMessage {
+            role,
+            ..Default::default()
+        },
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_set_role(
+    ptr: *mut CChatCompletionRequestMessage,
+    role: *const c_char,
+) -> bool {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for message!");
+        return false;
+    }
+    let role = match parse_required_string(role, "role") {
+        Ok(role) => role,
+        Err(_) => return false,
+    };
+    unsafe { &mut *ptr }.inner.role = role;
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_set_content(
+    ptr: *mut CChatCompletionRequestMessage,
+    content: *const c_char,
+) -> bool {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for message!");
+        return false;
+    }
+    let content = match parse_optional_string(content, "content") {
+        Ok(content) => content,
+        Err(_) => return false,
+    };
+    unsafe { &mut *ptr }.inner.content = content;
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_set_name(
+    ptr: *mut CChatCompletionRequestMessage,
+    name: *const c_char,
+) -> bool {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for message!");
+        return false;
+    }
+    let name = match parse_optional_string(name, "name") {
+        Ok(name) => name,
+        Err(_) => return false,
+    };
+    unsafe { &mut *ptr }.inner.name = name;
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_set_function_call(
+    ptr: *mut CChatCompletionRequestMessage,
+    name: *const c_char,
+    arguments: *const c_char,
+) -> bool {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for message!");
+        return false;
+    }
+    let function_call = match parse_function_call(name, arguments, "function_call") {
+        Ok(function_call) => function_call,
+        Err(_) => return false,
+    };
+    unsafe { &mut *ptr }.inner.function_call = Some(function_call);
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_clear_function_call(
+    ptr: *mut CChatCompletionRequestMessage,
+) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe { &mut *ptr }.inner.function_call = None;
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_add_tool_call(
+    ptr: *mut CChatCompletionRequestMessage,
+    name: *const c_char,
+    arguments: *const c_char,
+) -> bool {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for message!");
+        return false;
+    }
+    let tool_call = match parse_function_call(name, arguments, "tool_call") {
+        Ok(tool_call) => tool_call,
+        Err(_) => return false,
+    };
+    unsafe { &mut *ptr }.inner.tool_calls.push(tool_call);
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_clear_tool_calls(
+    ptr: *mut CChatCompletionRequestMessage,
+) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe { &mut *ptr }.inner.tool_calls.clear();
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_set_refusal(
+    ptr: *mut CChatCompletionRequestMessage,
+    refusal: *const c_char,
+) -> bool {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for message!");
+        return false;
+    }
+    let refusal = match parse_optional_string(refusal, "refusal") {
+        Ok(refusal) => refusal,
+        Err(_) => return false,
+    };
+    unsafe { &mut *ptr }.inner.refusal = refusal;
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_chat_message_destroy(ptr: *mut CChatCompletionRequestMessage) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe {
+        let _ = Box::from_raw(ptr);
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn tiktoken_num_tokens_from_messages(
     model: *const c_char,
     num_messages: u32,
-    messages: *const CChatCompletionRequestMessage,
+    messages: *const *mut CChatCompletionRequestMessage,
 ) -> usize {
     if model.is_null() {
         #[cfg(feature = "logging")]
@@ -227,7 +339,7 @@ pub extern "C" fn tiktoken_num_tokens_from_messages(
 pub extern "C" fn tiktoken_get_chat_completion_max_tokens(
     model: *const c_char,
     num_messages: u32,
-    messages: *const CChatCompletionRequestMessage,
+    messages: *const *mut CChatCompletionRequestMessage,
 ) -> usize {
     if model.is_null() {
         #[cfg(feature = "logging")]
@@ -654,45 +766,59 @@ mod tests {
         assert_eq!(max_tokens, usize::MAX);
     }
 
+    fn message_array(
+        messages: &[*mut CChatCompletionRequestMessage],
+    ) -> Vec<*mut CChatCompletionRequestMessage> {
+        messages.to_vec()
+    }
+
+    fn destroy_messages(messages: &[*mut CChatCompletionRequestMessage]) {
+        for &message in messages {
+            tiktoken_chat_message_destroy(message);
+        }
+    }
+
+    #[test]
+    fn test_chat_message_new_null_role() {
+        let message = tiktoken_chat_message_new(std::ptr::null());
+        assert!(message.is_null());
+    }
+
     #[test]
     fn test_num_tokens_from_messages() {
         let model = CString::new("gpt-4").unwrap();
         let role = CString::new("system").unwrap();
         let content = CString::new("I am a cat.").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: std::ptr::null(),
-            ..Default::default()
-        };
-        let messages = vec![message];
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
         let num_tokens = tiktoken_num_tokens_from_messages(
             model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
         );
         assert_eq!(num_tokens, 12);
+        destroy_messages(&messages);
     }
 
     #[test]
     fn test_num_tokens_from_messages_null_model() {
         let role = CString::new("system").unwrap();
         let content = CString::new("I am a cat.").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: std::ptr::null(),
-            ..Default::default()
-        };
-        let messages = vec![message];
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
         let num_tokens = tiktoken_num_tokens_from_messages(
             std::ptr::null(),
-            messages.len() as u32,
-            messages.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
         );
         assert_eq!(num_tokens, usize::MAX);
+        destroy_messages(&messages);
     }
 
     #[test]
@@ -707,40 +833,36 @@ mod tests {
         let model = CString::new("gpt-4").unwrap();
         let role = CString::new("system").unwrap();
         let content = CString::new("I am a cat.").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: std::ptr::null(),
-            ..Default::default()
-        };
-        let messages = vec![message];
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
         let max_tokens = tiktoken_get_chat_completion_max_tokens(
             model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
         );
         assert_eq!(max_tokens, 8180);
+        destroy_messages(&messages);
     }
 
     #[test]
     fn test_get_chat_completion_max_tokens_null_model() {
         let role = CString::new("system").unwrap();
         let content = CString::new("I am a cat.").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: std::ptr::null(),
-            ..Default::default()
-        };
-        let messages = vec![message];
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
         let max_tokens = tiktoken_get_chat_completion_max_tokens(
             std::ptr::null(),
-            messages.len() as u32,
-            messages.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
         );
         assert_eq!(max_tokens, usize::MAX);
+        destroy_messages(&messages);
     }
 
     #[test]
@@ -748,39 +870,26 @@ mod tests {
         let model = CString::new("cat-gpt").unwrap();
         let role = CString::new("system").unwrap();
         let content = CString::new("I am a cat.").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: std::ptr::null(),
-            ..Default::default()
-        };
-        let messages = vec![message];
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
         let max_tokens = tiktoken_get_chat_completion_max_tokens(
             model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
         );
         assert_eq!(max_tokens, usize::MAX);
+        destroy_messages(&messages);
     }
 
     #[test]
-    fn test_get_chat_completion_max_tokens_null_role() {
+    fn test_get_chat_completion_max_tokens_null_message_item() {
         let model = CString::new("gpt-4").unwrap();
-        let content = CString::new("I am a cat.").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: std::ptr::null(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: std::ptr::null(),
-            ..Default::default()
-        };
-        let messages = vec![message];
-        let max_tokens = tiktoken_get_chat_completion_max_tokens(
-            model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
-        );
+        let messages = [std::ptr::null_mut::<CChatCompletionRequestMessage>()];
+        let max_tokens =
+            tiktoken_get_chat_completion_max_tokens(model.as_ptr(), messages.len() as u32, messages.as_ptr());
         assert_eq!(max_tokens, usize::MAX);
     }
 
@@ -1221,52 +1330,38 @@ mod tests {
         let content = CString::new("I'll help you with that.").unwrap();
         let fun_name = CString::new("get_weather").unwrap();
         let fun_args = CString::new("{\"location\": \"Tokyo\"}").unwrap();
-        let function_call = CFunctionCall {
-            name: fun_name.as_ptr(),
-            arguments: fun_args.as_ptr(),
-        };
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: &function_call,
-            ..Default::default()
-        };
-        let messages = vec![message];
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        assert!(tiktoken_chat_message_set_function_call(
+            message,
+            fun_name.as_ptr(),
+            fun_args.as_ptr(),
+        ));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
         let num_tokens = tiktoken_num_tokens_from_messages(
             model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
         );
-        // This should succeed and return a valid token count
         assert_ne!(num_tokens, usize::MAX);
         assert!(num_tokens > 0);
+        destroy_messages(&messages);
     }
 
     #[test]
     fn test_num_tokens_from_messages_function_call_null_name() {
-        let model = CString::new("gpt-4").unwrap();
         let role = CString::new("assistant").unwrap();
-        let content = CString::new("I'll help you with that.").unwrap();
         let fun_args = CString::new("{\"location\": \"Tokyo\"}").unwrap();
-        let function_call = CFunctionCall {
-            name: std::ptr::null(),
-            arguments: fun_args.as_ptr(),
-        };
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: &function_call,
-            ..Default::default()
-        };
-        let messages = vec![message];
-        let num_tokens = tiktoken_num_tokens_from_messages(
-            model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
-        );
-        assert_eq!(num_tokens, usize::MAX);
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(!tiktoken_chat_message_set_function_call(
+            message,
+            std::ptr::null(),
+            fun_args.as_ptr(),
+        ));
+        tiktoken_chat_message_destroy(message);
     }
 
     #[test]
@@ -1276,52 +1371,38 @@ mod tests {
         let content = CString::new("I'll help you with that.").unwrap();
         let fun_name = CString::new("get_weather").unwrap();
         let fun_args = CString::new("{\"location\": \"Tokyo\"}").unwrap();
-        let function_call = CFunctionCall {
-            name: fun_name.as_ptr(),
-            arguments: fun_args.as_ptr(),
-        };
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: &function_call,
-            ..Default::default()
-        };
-        let messages = vec![message];
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        assert!(tiktoken_chat_message_set_function_call(
+            message,
+            fun_name.as_ptr(),
+            fun_args.as_ptr(),
+        ));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
         let max_tokens = tiktoken_get_chat_completion_max_tokens(
             model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
         );
-        // This should succeed and return a valid token count
         assert_ne!(max_tokens, usize::MAX);
         assert!(max_tokens > 0);
+        destroy_messages(&messages);
     }
 
     #[test]
     fn test_get_chat_completion_max_tokens_function_call_null_arguments() {
-        let model = CString::new("gpt-4").unwrap();
         let role = CString::new("assistant").unwrap();
-        let content = CString::new("I'll help you with that.").unwrap();
         let fun_name = CString::new("get_weather").unwrap();
-        let function_call = CFunctionCall {
-            name: fun_name.as_ptr(),
-            arguments: std::ptr::null(),
-        };
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            name: std::ptr::null(),
-            function_call: &function_call,
-            ..Default::default()
-        };
-        let messages = vec![message];
-        let max_tokens = tiktoken_get_chat_completion_max_tokens(
-            model.as_ptr(),
-            messages.len() as u32,
-            messages.as_ptr(),
-        );
-        assert_eq!(max_tokens, usize::MAX);
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(!tiktoken_chat_message_set_function_call(
+            message,
+            fun_name.as_ptr(),
+            std::ptr::null(),
+        ));
+        tiktoken_chat_message_destroy(message);
     }
 
     #[test]
@@ -1331,22 +1412,24 @@ mod tests {
         let content = CString::new("I'll call a tool.").unwrap();
         let tool_name = CString::new("get_weather").unwrap();
         let tool_args = CString::new("{\"location\":\"Tokyo\"}").unwrap();
-        let tool_calls = [CFunctionCall {
-            name: tool_name.as_ptr(),
-            arguments: tool_args.as_ptr(),
-        }];
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            content: content.as_ptr(),
-            tool_calls: tool_calls.as_ptr(),
-            num_tool_calls: tool_calls.len(),
-            ..Default::default()
-        };
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        assert!(tiktoken_chat_message_add_tool_call(
+            message,
+            tool_name.as_ptr(),
+            tool_args.as_ptr(),
+        ));
         let messages = [message];
-        let num_tokens =
-            tiktoken_num_tokens_from_messages(model.as_ptr(), messages.len() as u32, messages.as_ptr());
+        let message_ptrs = message_array(&messages);
+        let num_tokens = tiktoken_num_tokens_from_messages(
+            model.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
+        );
         assert_ne!(num_tokens, usize::MAX);
         assert!(num_tokens > 0);
+        destroy_messages(&messages);
     }
 
     #[test]
@@ -1354,50 +1437,39 @@ mod tests {
         let model = CString::new("gpt-4o").unwrap();
         let role = CString::new("assistant").unwrap();
         let refusal = CString::new("I cannot help with that request.").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            refusal: refusal.as_ptr(),
-            ..Default::default()
-        };
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_refusal(message, refusal.as_ptr()));
         let messages = [message];
-        let num_tokens =
-            tiktoken_num_tokens_from_messages(model.as_ptr(), messages.len() as u32, messages.as_ptr());
+        let message_ptrs = message_array(&messages);
+        let num_tokens = tiktoken_num_tokens_from_messages(
+            model.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
+        );
         assert_ne!(num_tokens, usize::MAX);
         assert!(num_tokens > 0);
+        destroy_messages(&messages);
     }
 
     #[test]
     fn test_num_tokens_from_messages_tool_call_null_arguments() {
-        let model = CString::new("gpt-4o").unwrap();
         let role = CString::new("assistant").unwrap();
         let tool_name = CString::new("get_weather").unwrap();
-        let tool_calls = [CFunctionCall {
-            name: tool_name.as_ptr(),
-            arguments: std::ptr::null(),
-        }];
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            tool_calls: tool_calls.as_ptr(),
-            num_tool_calls: tool_calls.len(),
-            ..Default::default()
-        };
-        let messages = [message];
-        let num_tokens =
-            tiktoken_num_tokens_from_messages(model.as_ptr(), messages.len() as u32, messages.as_ptr());
-        assert_eq!(num_tokens, usize::MAX);
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(!tiktoken_chat_message_add_tool_call(
+            message,
+            tool_name.as_ptr(),
+            std::ptr::null(),
+        ));
+        tiktoken_chat_message_destroy(message);
     }
 
     #[test]
-    fn test_get_chat_completion_max_tokens_tool_calls_null_pointer() {
+    fn test_get_chat_completion_max_tokens_null_message_pointer() {
         let model = CString::new("gpt-4o").unwrap();
-        let role = CString::new("assistant").unwrap();
-        let message = CChatCompletionRequestMessage {
-            role: role.as_ptr(),
-            tool_calls: std::ptr::null(),
-            num_tool_calls: 1,
-            ..Default::default()
-        };
-        let messages = [message];
+        let messages = [std::ptr::null_mut::<CChatCompletionRequestMessage>()];
         let max_tokens = tiktoken_get_chat_completion_max_tokens(
             model.as_ptr(),
             messages.len() as u32,

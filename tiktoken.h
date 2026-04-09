@@ -14,26 +14,36 @@ extern "C"
   typedef void CoreBPE;
   typedef uint32_t Rank;
 
-  typedef struct CFunctionCall
-  {
-    const char *name;
-    const char *arguments;
-  } CFunctionCall;
-
-  typedef struct CChatCompletionRequestMessage
-  {
-    const char *role;
-    const char *content;
-    const char *name;
-    const struct CFunctionCall *function_call;
-    const struct CFunctionCall *tool_calls;
-    size_t num_tool_calls;
-    const char *refusal;
-  } CChatCompletionRequestMessage;
+  typedef struct CChatCompletionRequestMessage CChatCompletionRequestMessage;
 
   const char *tiktoken_c_version(void);
 
   void tiktoken_init_logger(void);
+
+  CChatCompletionRequestMessage *tiktoken_chat_message_new(const char *role);
+
+  bool tiktoken_chat_message_set_role(CChatCompletionRequestMessage *message, const char *role);
+
+  bool tiktoken_chat_message_set_content(CChatCompletionRequestMessage *message, const char *content);
+
+  bool tiktoken_chat_message_set_name(CChatCompletionRequestMessage *message, const char *name);
+
+  bool tiktoken_chat_message_set_function_call(CChatCompletionRequestMessage *message,
+                                               const char *name,
+                                               const char *arguments);
+
+  void tiktoken_chat_message_clear_function_call(CChatCompletionRequestMessage *message);
+
+  bool tiktoken_chat_message_add_tool_call(CChatCompletionRequestMessage *message,
+                                           const char *name,
+                                           const char *arguments);
+
+  void tiktoken_chat_message_clear_tool_calls(CChatCompletionRequestMessage *message);
+
+  bool tiktoken_chat_message_set_refusal(CChatCompletionRequestMessage *message,
+                                         const char *refusal);
+
+  void tiktoken_chat_message_destroy(CChatCompletionRequestMessage *message);
 
   CoreBPE *tiktoken_get_bpe_from_model(const char *model);
 
@@ -81,11 +91,11 @@ extern "C"
 
   size_t tiktoken_num_tokens_from_messages(const char *model,
                                            uint32_t num_messages,
-                                           const struct CChatCompletionRequestMessage *messages);
+                 CChatCompletionRequestMessage *const *messages);
 
   size_t tiktoken_get_chat_completion_max_tokens(const char *model,
                                                  uint32_t num_messages,
-                                                 const struct CChatCompletionRequestMessage *messages);
+                   CChatCompletionRequestMessage *const *messages);
 
   void tiktoken_free(void *ptr);
 

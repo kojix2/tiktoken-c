@@ -28,21 +28,7 @@ The API mirrors the functionality of [tiktoken-rs](https://docs.rs/tiktoken-rs/)
 ```c
 typedef void CoreBPE;
 typedef uint32_t Rank;
-
-typedef struct CFunctionCall {
-  const char *name;
-  const char *arguments;
-} CFunctionCall;
-
-typedef struct CChatCompletionRequestMessage {
-  const char *role;
-  const char *content;
-  const char *name;
-  const struct CFunctionCall *function_call;
-  const struct CFunctionCall *tool_calls;
-  size_t num_tool_calls;
-  const char *refusal;
-} CChatCompletionRequestMessage;
+typedef struct CChatCompletionRequestMessage CChatCompletionRequestMessage;
 ```
 
 ### Core Functions
@@ -52,6 +38,21 @@ typedef struct CChatCompletionRequestMessage {
 ```c
 const char *tiktoken_c_version(void);
 void tiktoken_init_logger(void);
+
+CChatCompletionRequestMessage *tiktoken_chat_message_new(const char *role);
+bool tiktoken_chat_message_set_role(CChatCompletionRequestMessage *message, const char *role);
+bool tiktoken_chat_message_set_content(CChatCompletionRequestMessage *message, const char *content);
+bool tiktoken_chat_message_set_name(CChatCompletionRequestMessage *message, const char *name);
+bool tiktoken_chat_message_set_function_call(CChatCompletionRequestMessage *message,
+                                             const char *name,
+                                             const char *arguments);
+void tiktoken_chat_message_clear_function_call(CChatCompletionRequestMessage *message);
+bool tiktoken_chat_message_add_tool_call(CChatCompletionRequestMessage *message,
+                                         const char *name,
+                                         const char *arguments);
+void tiktoken_chat_message_clear_tool_calls(CChatCompletionRequestMessage *message);
+bool tiktoken_chat_message_set_refusal(CChatCompletionRequestMessage *message, const char *refusal);
+void tiktoken_chat_message_destroy(CChatCompletionRequestMessage *message);
 ```
 
 #### Load Tokenizer
@@ -93,11 +94,11 @@ size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt)
 
 size_t tiktoken_num_tokens_from_messages(const char *model,
                                          uint32_t num_messages,
-                                         const CChatCompletionRequestMessage *messages);
+                 CChatCompletionRequestMessage *const *messages);
 
 size_t tiktoken_get_chat_completion_max_tokens(const char *model,
                                                uint32_t num_messages,
-                                               const CChatCompletionRequestMessage *messages);
+                   CChatCompletionRequestMessage *const *messages);
 ```
 
 #### Cleanup
@@ -115,6 +116,7 @@ Use `tiktoken_free()` to release any heap memory returned by the library:
 | ----------------------------------------------------- | ----------------- | ---------------------------- |
 | `*_encode*` / `*_decode*`                             | `Rank*` / `char*` / `uint8_t*` | `tiktoken_free(ptr)`         |
 | `tiktoken_*_base()` / `tiktoken_get_bpe_from_model()` | `CoreBPE*`        | `tiktoken_destroy_corebpe()` |
+| `tiktoken_chat_message_new()`                         | `CChatCompletionRequestMessage*` | `tiktoken_chat_message_destroy()` |
 
 The `*_count*` APIs return `size_t` directly and do not allocate memory.
 
@@ -158,29 +160,20 @@ int main() {
 #include "tiktoken.h"
 
 int main() {
-  CChatCompletionRequestMessage messages[2] = {
-    {
-      .role = "assistant",
-      .content = "I'll call the weather tool.",
-      .name = NULL,
-      .function_call = NULL,
-      .tool_calls = (CFunctionCall[]){{"get_weather", "{\"location\":\"Tokyo\"}"}},
-      .num_tool_calls = 1,
-      .refusal = NULL,
-    },
-    {
-      .role = "assistant",
-      .content = NULL,
-      .name = NULL,
-      .function_call = NULL,
-      .tool_calls = NULL,
-      .num_tool_calls = 0,
-      .refusal = "I cannot help with that request.",
-    },
-  };
+  CChatCompletionRequestMessage *messages[2];
+  messages[0] = tiktoken_chat_message_new("assistant");
+  messages[1] = tiktoken_chat_message_new("assistant");
+  if (messages[0] == NULL || messages[1] == NULL) return 1;
+
+  tiktoken_chat_message_set_content(messages[0], "I'll call the weather tool.");
+  tiktoken_chat_message_add_tool_call(messages[0], "get_weather", "{\"location\":\"Tokyo\"}");
+  tiktoken_chat_message_set_refusal(messages[1], "I cannot help with that request.");
 
   size_t num_tokens = tiktoken_num_tokens_from_messages("gpt-4o", 2, messages);
   printf("Chat tokens: %zu\n", num_tokens);
+
+  tiktoken_chat_message_destroy(messages[0]);
+  tiktoken_chat_message_destroy(messages[1]);
   return 0;
 }
 ```
