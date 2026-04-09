@@ -31,22 +31,17 @@ jobs:
         if: runner.os != 'Windows'
         run: cd test && ./test.sh
 
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Run C integration tests (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: cmd
         run: |
-          $targetDir = (Resolve-Path "target/debug").Path
-          $env:PATH = "$targetDir;$env:PATH"
-
-          if (Get-Command clang -ErrorAction SilentlyContinue) {
-            clang test/run_tests.c -L target/debug -ltiktoken_c -o test/run_tests.exe
-          } elseif (Get-Command cl -ErrorAction SilentlyContinue) {
-            cl /nologo test\\run_tests.c /Fe:test\\run_tests.exe /link /LIBPATH:target\\debug tiktoken_c.dll.lib
-          } else {
-            throw "No supported C compiler found (clang or cl)."
-          }
-
-          & test/run_tests.exe
+          cl /nologo test\run_tests.c /Fe:test\run_tests.exe /link /LIBPATH:target\debug tiktoken_c.dll.lib
+          set PATH=%CD%\target\debug;%PATH%
+          test\run_tests.exe
 
       - name: Build default release version
         run: cargo build --release --target-dir target/default --verbose
