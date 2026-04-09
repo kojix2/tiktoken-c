@@ -48,17 +48,31 @@ extern "C"
 
   Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
 
+  size_t tiktoken_corebpe_count_ordinary(CoreBPE *ptr, const char *text);
+
   Rank *tiktoken_corebpe_encode(CoreBPE *ptr,
                                 const char *text,
                                 const char *const *allowed_special,
                                 size_t allowed_special_len,
                                 size_t *num_tokens);
 
+  size_t tiktoken_corebpe_count(CoreBPE *ptr,
+                                const char *text,
+                                const char *const *allowed_special,
+                                size_t allowed_special_len);
+
   Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr,
                                                     const char *text,
                                                     size_t *num_tokens);
 
+  size_t tiktoken_corebpe_count_with_special_tokens(CoreBPE *ptr, const char *text);
+
   char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
+
+  uint8_t *tiktoken_corebpe_decode_bytes(CoreBPE *ptr,
+                                         const Rank *tokens,
+                                         size_t num_tokens,
+                                         size_t *num_bytes);
 
   size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt);
 

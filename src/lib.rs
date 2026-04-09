@@ -313,6 +313,36 @@ pub extern "C" fn tiktoken_corebpe_encode_ordinary(
     malloc_copy::<Rank>(&encoded)
 }
 
+#[no_mangle]
+pub extern "C" fn tiktoken_corebpe_count_ordinary(
+    ptr: *mut CoreBPE,
+    text: *const c_char,
+) -> usize {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for CoreBPE!");
+        return usize::MAX;
+    }
+    if text.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for text!");
+        return usize::MAX;
+    }
+    let text = unsafe {
+        let raw = CStr::from_ptr(text);
+        match raw.to_str() {
+            Ok(valid_str) => valid_str,
+            Err(_) => {
+                #[cfg(feature = "logging")]
+                warn!("Invalid UTF-8 sequence provided for text!");
+                return usize::MAX;
+            }
+        }
+    };
+    let corebpe = unsafe { &mut *ptr };
+    corebpe.count_ordinary(text)
+}
+
 // pub fn encode(&self, text: &str, allowed_special: HashSet<&str>) -> Vec<usize>
 #[no_mangle]
 pub extern "C" fn tiktoken_corebpe_encode(
@@ -352,6 +382,11 @@ pub extern "C" fn tiktoken_corebpe_encode(
         let slice = std::slice::from_raw_parts(allowed_special, allowed_special_len);
         let mut allowed_special_hash_set = std::collections::HashSet::new();
         for i in 0..allowed_special_len {
+            if slice[i].is_null() {
+                #[cfg(feature = "logging")]
+                warn!("Null pointer provided in allowed_special!");
+                return std::ptr::null_mut();
+            }
             let c_str = CStr::from_ptr(slice[i]);
             let str_slice = match c_str.to_str() {
                 Ok(valid_str) => valid_str,
@@ -373,6 +408,69 @@ pub extern "C" fn tiktoken_corebpe_encode(
         }
     };
     malloc_copy::<Rank>(&encoded)
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_corebpe_count(
+    ptr: *mut CoreBPE,
+    text: *const c_char,
+    allowed_special: *const *const c_char,
+    allowed_special_len: usize,
+) -> usize {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for CoreBPE!");
+        return usize::MAX;
+    }
+    if text.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for text!");
+        return usize::MAX;
+    }
+    let text = unsafe {
+        let raw = CStr::from_ptr(text);
+        match raw.to_str() {
+            Ok(valid_str) => valid_str,
+            Err(_) => {
+                #[cfg(feature = "logging")]
+                warn!("Invalid UTF-8 sequence provided for text!");
+                return usize::MAX;
+            }
+        }
+    };
+    let allowed_special = unsafe {
+        if allowed_special_len == 0 {
+            std::collections::HashSet::new()
+        } else {
+            if allowed_special.is_null() {
+                #[cfg(feature = "logging")]
+                warn!("Null pointer provided for allowed_special!");
+                return usize::MAX;
+            }
+            let slice = std::slice::from_raw_parts(allowed_special, allowed_special_len);
+            let mut allowed_special_hash_set = std::collections::HashSet::new();
+            for item in slice {
+                if item.is_null() {
+                    #[cfg(feature = "logging")]
+                    warn!("Null pointer provided in allowed_special!");
+                    return usize::MAX;
+                }
+                let c_str = CStr::from_ptr(*item);
+                let str_slice = match c_str.to_str() {
+                    Ok(valid_str) => valid_str,
+                    Err(_) => {
+                        #[cfg(feature = "logging")]
+                        warn!("Invalid UTF-8 sequence provided for allowed_special!");
+                        return usize::MAX;
+                    }
+                };
+                allowed_special_hash_set.insert(str_slice);
+            }
+            allowed_special_hash_set
+        }
+    };
+    let corebpe = unsafe { &mut *ptr };
+    corebpe.count(text, &allowed_special)
 }
 
 #[no_mangle]
@@ -410,6 +508,36 @@ pub extern "C" fn tiktoken_corebpe_encode_with_special_tokens(
         }
     };
     malloc_copy::<Rank>(&encoded)
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_corebpe_count_with_special_tokens(
+    ptr: *mut CoreBPE,
+    text: *const c_char,
+) -> usize {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for CoreBPE!");
+        return usize::MAX;
+    }
+    if text.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for text!");
+        return usize::MAX;
+    }
+    let text = unsafe {
+        let raw = CStr::from_ptr(text);
+        match raw.to_str() {
+            Ok(valid_str) => valid_str,
+            Err(_) => {
+                #[cfg(feature = "logging")]
+                warn!("Invalid UTF-8 sequence provided for text!");
+                return usize::MAX;
+            }
+        }
+    };
+    let corebpe = unsafe { &mut *ptr };
+    corebpe.count_with_special_tokens(text)
 }
 
 #[no_mangle]
@@ -452,6 +580,43 @@ pub extern "C" fn tiktoken_corebpe_decode(
 }
 
 #[no_mangle]
+pub extern "C" fn tiktoken_corebpe_decode_bytes(
+    ptr: *mut CoreBPE,
+    tokens: *const Rank,
+    num_tokens: usize,
+    num_bytes: *mut usize,
+) -> *mut u8 {
+    if ptr.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for CoreBPE!");
+        return std::ptr::null_mut();
+    }
+    if tokens.is_null() {
+        #[cfg(feature = "logging")]
+        warn!("Null pointer provided for tokens!");
+        return std::ptr::null_mut();
+    }
+    let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
+
+    let corebpe = unsafe { &mut *ptr };
+    let decoded = corebpe.decode_bytes(tokens);
+    let decoded = match decoded {
+        Ok(decoded) => decoded,
+        Err(_) => {
+            #[cfg(feature = "logging")]
+            warn!("Failed to decode bytes!");
+            return std::ptr::null_mut();
+        }
+    };
+    unsafe {
+        if !num_bytes.is_null() {
+            *num_bytes = decoded.len();
+        }
+    };
+    malloc_copy::<u8>(&decoded)
+}
+
+#[no_mangle]
 pub extern "C" fn tiktoken_c_version() -> *const c_char {
     static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
     VERSION.as_ptr() as *const c_char
@@ -459,8 +624,9 @@ pub extern "C" fn tiktoken_c_version() -> *const c_char {
 
 #[cfg(test)]
 mod tests {
+    use crate::alloc::tiktoken_free;
     use super::*;
-    use corebpe::{tiktoken_destroy_corebpe, tiktoken_get_bpe_from_model};
+    use corebpe::{tiktoken_destroy_corebpe, tiktoken_get_bpe_from_model, tiktoken_r50k_base};
     use std::ffi::CString;
     use utils::get_string_from_c_char;
 
@@ -640,6 +806,16 @@ mod tests {
     }
 
     #[test]
+    fn test_corebpe_count_ordinary() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat.").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count_ordinary(corebpe, text.as_ptr());
+        assert_eq!(num_tokens, 5);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
     fn test_corebpe_encode_ordinary_with_special_tokens() {
         let model = CString::new("gpt-4").unwrap();
         let text = CString::new("I am a cat. <|endoftext|>").unwrap();
@@ -674,6 +850,22 @@ mod tests {
     }
 
     #[test]
+    fn test_corebpe_count_ordinary_null_corebpe() {
+        let text = CString::new("I am a cat.").unwrap();
+        let num_tokens = tiktoken_corebpe_count_ordinary(std::ptr::null_mut(), text.as_ptr());
+        assert_eq!(num_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_corebpe_count_ordinary_null_text() {
+        let model = CString::new("gpt-4").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count_ordinary(corebpe, std::ptr::null());
+        assert_eq!(num_tokens, usize::MAX);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
     fn test_crebpe_encode() {
         let model = CString::new("gpt-4").unwrap();
         let text = CString::new("I am a cat. <|fim_prefix|><|endoftext|>").unwrap();
@@ -698,6 +890,29 @@ mod tests {
         let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
         let tokens: Vec<usize> = tokens.iter().map(|&x| x as usize).collect();
         assert_eq!(tokens, vec![40, 1097, 264, 8415, 13, 220, 100258, 100257]);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_crebpe_count() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat. <|fim_prefix|><|endoftext|>").unwrap();
+        let allowed_special: Vec<String> =
+            vec!["<|endoftext|>".to_string(), "<|fim_prefix|>".to_string()];
+        let allowed_special: Vec<CString> = allowed_special
+            .iter()
+            .map(|x| CString::new(x.as_str()).unwrap())
+            .collect();
+        let allowed_special: Vec<*const c_char> =
+            allowed_special.iter().map(|x| x.as_ptr()).collect();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count(
+            corebpe,
+            text.as_ptr(),
+            allowed_special.as_ptr(),
+            allowed_special.len(),
+        );
+        assert_eq!(num_tokens, 8);
         tiktoken_destroy_corebpe(corebpe);
     }
 
@@ -747,6 +962,66 @@ mod tests {
     }
 
     #[test]
+    fn test_crebpe_encode_null_allowed_special_item() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat.").unwrap();
+        let mut num_tokens: usize = 0;
+        let allowed_special: [*const c_char; 1] = [std::ptr::null()];
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let tokens = tiktoken_corebpe_encode(
+            corebpe,
+            text.as_ptr(),
+            allowed_special.as_ptr(),
+            allowed_special.len(),
+            &mut num_tokens,
+        );
+        assert!(tokens.is_null());
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_crebpe_count_without_special_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat. <|endoftext|>").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count(corebpe, text.as_ptr(), std::ptr::null(), 0);
+        assert_eq!(num_tokens, 11);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_crebpe_count_null_corebpe() {
+        let text = CString::new("I am a cat. <|endoftext|>").unwrap();
+        let num_tokens = tiktoken_corebpe_count(std::ptr::null_mut(), text.as_ptr(), std::ptr::null(), 0);
+        assert_eq!(num_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_crebpe_count_null_text() {
+        let model = CString::new("gpt-4").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count(corebpe, std::ptr::null(), std::ptr::null(), 0);
+        assert_eq!(num_tokens, usize::MAX);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_crebpe_count_null_allowed_special_item() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat.").unwrap();
+        let allowed_special: [*const c_char; 1] = [std::ptr::null()];
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count(
+            corebpe,
+            text.as_ptr(),
+            allowed_special.as_ptr(),
+            allowed_special.len(),
+        );
+        assert_eq!(num_tokens, usize::MAX);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
     fn test_crebpe_encode_without_special_tokens() {
         let model = CString::new("gpt-4").unwrap();
         let text = CString::new("I am a cat. <|endoftext|>").unwrap();
@@ -792,6 +1067,16 @@ mod tests {
     }
 
     #[test]
+    fn test_corebpe_count_with_special_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let text = CString::new("I am a cat. <|endoftext|>").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count_with_special_tokens(corebpe, text.as_ptr());
+        assert_eq!(num_tokens, 7);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
     fn test_corebpe_encode_with_special_tokens_with_special_tokens() {
         let model = CString::new("gpt-4").unwrap();
         let text = CString::new("I am a cat. <|endoftext|>").unwrap();
@@ -826,6 +1111,23 @@ mod tests {
         let tokens =
             tiktoken_corebpe_encode_with_special_tokens(corebpe, std::ptr::null(), &mut num_tokens);
         assert!(tokens.is_null());
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_count_with_special_tokens_null_corebpe() {
+        let text = CString::new("I am a cat.").unwrap();
+        let num_tokens =
+            tiktoken_corebpe_count_with_special_tokens(std::ptr::null_mut(), text.as_ptr());
+        assert_eq!(num_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_corebpe_count_with_special_tokens_null_text() {
+        let model = CString::new("gpt-4").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let num_tokens = tiktoken_corebpe_count_with_special_tokens(corebpe, std::ptr::null());
+        assert_eq!(num_tokens, usize::MAX);
         tiktoken_destroy_corebpe(corebpe);
     }
 
@@ -866,6 +1168,54 @@ mod tests {
         let decoded = unsafe { CStr::from_ptr(decoded) };
         let decoded = decoded.to_str().unwrap();
         assert_eq!(decoded, "I am a cat. <|endoftext|>");
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_decode_bytes() {
+        let model = CString::new("gpt-4").unwrap();
+        let tokens = vec![40, 1097, 264, 8415, 13];
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let mut num_bytes = 0;
+        let decoded =
+            tiktoken_corebpe_decode_bytes(corebpe, tokens.as_ptr(), tokens.len(), &mut num_bytes);
+        let decoded = unsafe { std::slice::from_raw_parts(decoded, num_bytes) };
+        assert_eq!(decoded, b"I am a cat.");
+        tiktoken_free(decoded.as_ptr() as *mut libc::c_void);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_decode_bytes_non_utf8() {
+        let corebpe = tiktoken_r50k_base();
+        let tokens = [49426];
+        let mut num_bytes = 0;
+        let decoded =
+            tiktoken_corebpe_decode_bytes(corebpe, tokens.as_ptr(), tokens.len(), &mut num_bytes);
+        assert!(!decoded.is_null());
+        assert!(num_bytes > 0);
+        tiktoken_free(decoded as *mut libc::c_void);
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_corebpe_decode_bytes_null_corebpe() {
+        let tokens = [40, 1097, 264, 8415, 13];
+        let decoded = tiktoken_corebpe_decode_bytes(
+            std::ptr::null_mut(),
+            tokens.as_ptr(),
+            tokens.len(),
+            std::ptr::null_mut(),
+        );
+        assert!(decoded.is_null());
+    }
+
+    #[test]
+    fn test_corebpe_decode_bytes_null_tokens() {
+        let model = CString::new("gpt-4").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        let decoded = tiktoken_corebpe_decode_bytes(corebpe, std::ptr::null(), 0, std::ptr::null_mut());
+        assert!(decoded.is_null());
         tiktoken_destroy_corebpe(corebpe);
     }
 

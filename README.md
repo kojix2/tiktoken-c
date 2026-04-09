@@ -71,8 +71,15 @@ Rank *tiktoken_corebpe_encode(CoreBPE *ptr, const char *text,
                               size_t *num_tokens);
 
 Rank *tiktoken_corebpe_encode_ordinary(CoreBPE *ptr, const char *text, size_t *num_tokens);
+size_t tiktoken_corebpe_count_ordinary(CoreBPE *ptr, const char *text);
+size_t tiktoken_corebpe_count(CoreBPE *ptr, const char *text,
+                              const char *const *allowed_special,
+                              size_t allowed_special_len);
 Rank *tiktoken_corebpe_encode_with_special_tokens(CoreBPE *ptr, const char *text, size_t *num_tokens);
+size_t tiktoken_corebpe_count_with_special_tokens(CoreBPE *ptr, const char *text);
 char *tiktoken_corebpe_decode(CoreBPE *ptr, const Rank *tokens, size_t num_tokens);
+uint8_t *tiktoken_corebpe_decode_bytes(CoreBPE *ptr, const Rank *tokens,
+                                       size_t num_tokens, size_t *num_bytes);
 ```
 
 #### Token Counting
@@ -102,8 +109,10 @@ Use `tiktoken_free()` to release any heap memory returned by the library:
 
 | Function                                              | Return Type       | Free with                    |
 | ----------------------------------------------------- | ----------------- | ---------------------------- |
-| `*_encode*` / `*_decode`                              | `Rank*` / `char*` | `tiktoken_free(ptr)`         |
+| `*_encode*` / `*_decode*`                             | `Rank*` / `char*` / `uint8_t*` | `tiktoken_free(ptr)`         |
 | `tiktoken_*_base()` / `tiktoken_get_bpe_from_model()` | `CoreBPE*`        | `tiktoken_destroy_corebpe()` |
+
+The `*_count*` APIs return `size_t` directly and do not allocate memory.
 
 Important Notes:
 
