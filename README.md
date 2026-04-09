@@ -195,13 +195,6 @@ cd test && ./test.sh
 
 # Test with release build
 cd test && BUILD_DIR=release ./test.sh
-
-# Generate header
-cargo install --force cbindgen
-cbindgen --config cbindgen.toml --crate tiktoken-c --output tiktoken.h
-
-# Patch header to insert typedefs for CoreBPE and Rank
-perl -i -pe '$i ||= /#include/; $_ = "\ntypedef void CoreBPE;\ntypedef uint32_t Rank;\n" if $i && /^$/ && !$f++; $i = 0 if /^$/ && $f' tiktoken.h
 ```
 
 ## License
