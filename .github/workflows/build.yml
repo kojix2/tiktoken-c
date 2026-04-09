@@ -18,7 +18,7 @@ jobs:
             asset_suffix: windows-x86_64
             archive_ext: zip
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@v6
       - run: rustup update
 
       - name: Build debug version
