@@ -1,102 +1,12 @@
 #!/bin/sh
 
-# Build directory (can be changed to release or debug)
+set -eu
+
 BUILD_DIR="${BUILD_DIR:-debug}"
+CC="${CC:-cc}"
 
-# Add missing import
-export LD_LIBRARY_PATH="../target/${BUILD_DIR}"
-# MacOS
-export DYLD_LIBRARY_PATH="../target/${BUILD_DIR}"
+export LD_LIBRARY_PATH="../target/${BUILD_DIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="../target/${BUILD_DIR}${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 
-cc test.c -L ../target/${BUILD_DIR}/ -ltiktoken_c -o test
-cc version.c -L ../target/${BUILD_DIR}/ -ltiktoken_c -o version
-
-# Show version
-./version
-
-# Initialize test result
-ALL_TESTS_PASSED=true
-
-# Test with gpt-4 model
-OUTPUT_GPT4=$(echo "I am a cat." | ./test -m "gpt-4")
-EXPECTED_GPT4="40 1097 264 8415 13"
-
-echo "Testing gpt-4 model"
-echo "Expected: $EXPECTED_GPT4"
-echo "     Got: $OUTPUT_GPT4"
-
-if [ "$OUTPUT_GPT4" = "$EXPECTED_GPT4" ]; then
-  echo "Test passed successfully for gpt-4"
-else
-  echo "Test failed for gpt-4 :("
-  ALL_TESTS_PASSED=false
-fi
-
-# Test with gpt-4o model
-OUTPUT_GPT4O=$(echo "I am a cat." | ./test -m "gpt-4o")
-EXPECTED_GPT4O="40 939 261 9059 13"
-
-echo "Testing gpt-4o model"
-echo "Expected: $EXPECTED_GPT4O"
-echo "     Got: $OUTPUT_GPT4O"
-
-if [ "$OUTPUT_GPT4O" = "$EXPECTED_GPT4O" ]; then
-  echo "Test passed successfully for gpt-4o"
-else
-  echo "Test failed for gpt-4o :("
-  ALL_TESTS_PASSED=false
-fi
-
-# Test with gpt-5 model
-OUTPUT_GPT5=$(echo "I am a cat." | ./test -m "gpt-5")
-EXPECTED_GPT5="40 939 261 9059 13"
-
-echo "Testing gpt-5 model"
-echo "Expected: $EXPECTED_GPT5"
-echo "     Got: $OUTPUT_GPT5"
-
-if [ "$OUTPUT_GPT5" = "$EXPECTED_GPT5" ]; then
-  echo "Test passed successfully for gpt-5"
-else
-  echo "Test failed for gpt-5 :("
-  ALL_TESTS_PASSED=false
-fi
-
-# Test with gpt-oss-20b model
-OUTPUT_OSS20=$(echo "I am a cat." | ./test -m "gpt-oss-20b")
-EXPECTED_OSS20="40 939 261 9059 13"
-
-echo "Testing gpt-oss-20b model"
-echo "Expected: $EXPECTED_OSS20"
-echo "     Got: $OUTPUT_OSS20"
-
-if [ "$OUTPUT_OSS20" = "$EXPECTED_OSS20" ]; then
-  echo "Test passed successfully for gpt-oss-20b"
-else
-  echo "Test failed for gpt-oss-20b :("
-  ALL_TESTS_PASSED=false
-fi
-
-# Test with gpt-oss-120b model
-OUTPUT_OSS120=$(echo "I am a cat." | ./test -m "gpt-oss-120b")
-EXPECTED_OSS120="40 939 261 9059 13"
-
-echo "Testing gpt-oss-120b model"
-echo "Expected: $EXPECTED_OSS120"
-echo "     Got: $OUTPUT_OSS120"
-
-if [ "$OUTPUT_OSS120" = "$EXPECTED_OSS120" ]; then
-  echo "Test passed successfully for gpt-oss-120b"
-else
-  echo "Test failed for gpt-oss-120b :("
-  ALL_TESTS_PASSED=false
-fi
-
-# Final test result
-if [ "$ALL_TESTS_PASSED" = true ]; then
-  echo "All tests passed successfully"
-  exit 0
-else
-  echo "Some tests failed :("
-  exit 1
-fi
+"$CC" run_tests.c -L "../target/${BUILD_DIR}" -ltiktoken_c -o run_tests
+./run_tests

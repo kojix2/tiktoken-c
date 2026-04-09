@@ -188,6 +188,8 @@ int main() {
 
 tiktoken-c prioritizes tracking upstream [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs) over preserving a stable C ABI across releases. When upstream changes require new fields, new layouts, or API reshaping, this project may make breaking changes to C structs and function signatures instead of keeping compatibility shims indefinitely. If you maintain a downstream binding or embed the header directly, treat new releases as potentially ABI-breaking and recompile against the matching version of [tiktoken.h](tiktoken.h).
 
+The C integration test logic is centralized in [test/run_tests.c](test/run_tests.c) and is intended to run with the same expectations on Linux, macOS, and Windows.
+
 ```sh
 # Run tests
 cargo test
