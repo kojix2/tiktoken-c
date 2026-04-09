@@ -83,10 +83,10 @@ pub extern "C" fn tiktoken_get_bpe_from_model(model: *const c_char) -> *mut Core
             }
         }
     };
-    let bpe = tiktoken_rs::get_bpe_from_model(model);
+    let bpe = tiktoken_rs::bpe_for_model(model);
     match bpe {
         Ok(bpe) => {
-            let boxed = Box::new(bpe);
+            let boxed = Box::new(bpe.clone());
             Box::into_raw(boxed)
         }
         Err(_) => {

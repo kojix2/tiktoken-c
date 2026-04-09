@@ -5,7 +5,7 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kojix2/tiktoken-c)
 
 - C API for [Tiktoken](https://github.com/openai/tiktoken), OpenAI's tokenizer
-- Compatible with [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs) 0.9.1
+- Compatible with [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs) 0.10.0
 
 ## Installation
 

@@ -61,7 +61,7 @@ pub extern "C" fn tiktoken_get_completion_max_tokens(
             }
         }
     };
-    match tiktoken_rs::get_completion_max_tokens(model, prompt) {
+    match tiktoken_rs::get_text_completion_max_tokens(model, prompt) {
         Ok(max_tokens) => max_tokens,
         Err(_) => {
             #[cfg(feature = "logging")]
@@ -162,6 +162,8 @@ pub extern "C" fn tiktoken_num_tokens_from_messages(
                 content: content,
                 name: name,
                 function_call: function_call,
+                tool_calls: Vec::new(),
+                refusal: None,
             });
         }
         messages_vec
@@ -258,6 +260,8 @@ pub extern "C" fn tiktoken_get_chat_completion_max_tokens(
                 content: content,
                 name: name,
                 function_call: function_call,
+                tool_calls: Vec::new(),
+                refusal: None,
             });
         }
         messages_vec
@@ -425,7 +429,6 @@ pub extern "C" fn tiktoken_corebpe_decode(
         return std::ptr::null_mut();
     }
     let tokens = unsafe { std::slice::from_raw_parts(tokens, num_tokens) };
-    let tokens = tokens.to_vec();
 
     let corebpe = unsafe { &mut *ptr };
     let decoded = corebpe.decode(tokens);
