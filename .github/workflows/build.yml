@@ -1,0 +1,129 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset_suffix: linux-x86_64
+            archive_ext: tar.gz
+          - os: macos-latest
+            asset_suffix: macos-aarch64
+            archive_ext: tar.gz
+          - os: windows-latest
+            asset_suffix: windows-x86_64
+            archive_ext: zip
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - run: rustup update
+
+      - name: Build debug version
+        if: runner.os != 'Windows'
+        run: cargo build --verbose
+
+      - name: Test debug version
+        if: runner.os != 'Windows'
+        run: cargo test --verbose
+
+      - name: Run integration tests
+        if: runner.os != 'Windows'
+        run: cd test && ./test.sh
+
+      - name: Build default release version
+        run: cargo build --release --target-dir target/default --verbose
+
+      - name: Build logging release version
+        run: cargo build --release --features logging --target-dir target/logging --verbose
+
+      - name: Set asset names
+        id: asset_names
+        shell: bash
+        run: |
+          version_name="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
+            version_name="${GITHUB_SHA::7}"
+          fi
+          echo "archive_name=tiktoken-c-${version_name}-${{ matrix.asset_suffix }}.${{ matrix.archive_ext }}" >> "$GITHUB_OUTPUT"
+          echo "header_name=tiktoken-c-${version_name}.h" >> "$GITHUB_OUTPUT"
+
+      - name: Create package
+        shell: bash
+        run: |
+          mkdir -p release_package
+          cp tiktoken.h release_package/
+          cp README.md release_package/
+          cp LICENSE.txt release_package/
+
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp target/default/release/tiktoken_c.dll release_package/
+            cp target/default/release/tiktoken_c.dll.lib release_package/
+            cp target/logging/release/tiktoken_c.dll release_package/tiktoken_c_debug.dll
+            cp target/logging/release/tiktoken_c.dll.lib release_package/tiktoken_c_debug.dll.lib
+          else
+            cp target/default/release/libtiktoken_c.* release_package/
+            for file in target/logging/release/libtiktoken_c.*; do
+              ext="${file##*.}"
+              cp "$file" "release_package/libtiktoken_c_debug.$ext"
+            done
+          fi
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: tar -czf ${{ steps.asset_names.outputs.archive_name }} -C release_package .
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd release_package
+          7z a ../${{ steps.asset_names.outputs.archive_name }} *
+
+      - name: Upload build artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.asset_names.outputs.archive_name }}
+          path: ${{ steps.asset_names.outputs.archive_name }}
+
+      - name: Prepare header artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: cp tiktoken.h "${{ steps.asset_names.outputs.header_name }}"
+
+      - name: Upload header artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.asset_names.outputs.header_name }}
+          path: ${{ steps.asset_names.outputs.header_name }}
+
+      - name: Ensure GitHub release exists
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes >/dev/null 2>&1 || true
+
+      - name: Upload release archive
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "${{ steps.asset_names.outputs.archive_name }}" --clobber
+
+      - name: Prepare release header
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: cp tiktoken.h "${{ steps.asset_names.outputs.header_name }}"
+
+      - name: Upload release header
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "${{ steps.asset_names.outputs.header_name }}" --clobber
