@@ -14,16 +14,25 @@ int main()
   messages[0].content = "You are a helpful assistant that only speaks French.";
   messages[0].name = NULL;
   messages[0].function_call = NULL;
+  messages[0].tool_calls = NULL;
+  messages[0].num_tool_calls = 0;
+  messages[0].refusal = NULL;
 
   messages[1].role = "user";
   messages[1].content = "Hello, how are you?";
   messages[1].name = NULL;
   messages[1].function_call = NULL;
+  messages[1].tool_calls = NULL;
+  messages[1].num_tool_calls = 0;
+  messages[1].refusal = NULL;
 
   messages[2].role = "system";
   messages[2].content = "Parlez-vous francais?";
   messages[2].name = NULL;
   messages[2].function_call = NULL;
+  messages[2].tool_calls = NULL;
+  messages[2].num_tool_calls = 0;
+  messages[2].refusal = NULL;
 
   // Get the maximum tokens for chat completion
   size_t max_tokens = tiktoken_get_chat_completion_max_tokens(model, 3, messages);

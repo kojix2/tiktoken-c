@@ -6,6 +6,7 @@
 
 - C API for [Tiktoken](https://github.com/openai/tiktoken), OpenAI's tokenizer
 - Compatible with [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs) 0.10.0
+- This project prioritizes tracking upstream tiktoken-rs; C API and ABI may change between releases.
 
 ## Installation
 
@@ -38,6 +39,9 @@ typedef struct CChatCompletionRequestMessage {
   const char *content;
   const char *name;
   const struct CFunctionCall *function_call;
+  const struct CFunctionCall *tool_calls;
+  size_t num_tool_calls;
+  const char *refusal;
 } CChatCompletionRequestMessage;
 ```
 
@@ -147,6 +151,40 @@ int main() {
 }
 ```
 
+### Count Chat Tokens
+
+```c
+#include <stdio.h>
+#include "tiktoken.h"
+
+int main() {
+  CChatCompletionRequestMessage messages[2] = {
+    {
+      .role = "assistant",
+      .content = "I'll call the weather tool.",
+      .name = NULL,
+      .function_call = NULL,
+      .tool_calls = (CFunctionCall[]){{"get_weather", "{\"location\":\"Tokyo\"}"}},
+      .num_tool_calls = 1,
+      .refusal = NULL,
+    },
+    {
+      .role = "assistant",
+      .content = NULL,
+      .name = NULL,
+      .function_call = NULL,
+      .tool_calls = NULL,
+      .num_tool_calls = 0,
+      .refusal = "I cannot help with that request.",
+    },
+  };
+
+  size_t num_tokens = tiktoken_num_tokens_from_messages("gpt-4o", 2, messages);
+  printf("Chat tokens: %zu\n", num_tokens);
+  return 0;
+}
+```
+
 ## Language Bindings
 
 | Language | Repository                                           |
@@ -154,6 +192,8 @@ int main() {
 | Crystal  | [tiktoken-cr](https://github.com/kojix2/tiktoken-cr) |
 
 ## Development
+
+tiktoken-c prioritizes tracking upstream [tiktoken-rs](https://github.com/zurawiki/tiktoken-rs) over preserving a stable C ABI across releases. When upstream changes require new fields, new layouts, or API reshaping, this project may make breaking changes to C structs and function signatures instead of keeping compatibility shims indefinitely. If you maintain a downstream binding or embed the header directly, treat new releases as potentially ABI-breaking and recompile against the matching version of [tiktoken.h](tiktoken.h).
 
 ```sh
 # Run tests

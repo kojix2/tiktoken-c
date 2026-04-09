@@ -26,6 +26,9 @@ extern "C"
     const char *content;
     const char *name;
     const struct CFunctionCall *function_call;
+    const struct CFunctionCall *tool_calls;
+    size_t num_tool_calls;
+    const char *refusal;
   } CChatCompletionRequestMessage;
 
   const char *tiktoken_c_version(void);
