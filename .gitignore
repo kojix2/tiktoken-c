@@ -1,7 +1,8 @@
 debug/
 target/
+tiktoken-rs/
 
-Cargo.lock
+*.lock
 
 **/*.rs.bk
 
