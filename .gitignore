@@ -8,6 +8,5 @@ tiktoken-rs/
 
 *.pdb
 
-test/test
-test/version
+test/run_tests
 *.out
