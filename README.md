@@ -28,6 +28,7 @@ The API mirrors the functionality of [tiktoken-rs](https://docs.rs/tiktoken-rs/)
 ```c
 typedef void CoreBPE;
 typedef uint32_t Rank;
+typedef enum TiktokenTokenizer TiktokenTokenizer;
 typedef struct CChatCompletionRequestMessage CChatCompletionRequestMessage;
 ```
 
@@ -38,6 +39,8 @@ typedef struct CChatCompletionRequestMessage CChatCompletionRequestMessage;
 ```c
 const char *tiktoken_c_version(void);
 void tiktoken_init_logger(void);
+size_t tiktoken_get_context_size(const char *model);
+TiktokenTokenizer tiktoken_get_tokenizer(const char *model);
 
 CChatCompletionRequestMessage *tiktoken_chat_message_new(const char *role);
 bool tiktoken_chat_message_set_role(CChatCompletionRequestMessage *message, const char *role);

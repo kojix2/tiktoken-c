@@ -10,6 +10,12 @@ typedef struct TestCase {
     size_t expected_len;
 } TestCase;
 
+typedef struct ModelMetadataCase {
+    const char *model;
+    size_t expected_context_size;
+    TiktokenTokenizer expected_tokenizer;
+} ModelMetadataCase;
+
 static int print_tokens(const Rank *tokens, size_t len)
 {
     size_t i;
@@ -100,9 +106,44 @@ int main(void)
         {"gpt-oss-20b", "I am a cat.", o200k_tokens, sizeof(o200k_tokens) / sizeof(o200k_tokens[0])},
         {"gpt-oss-120b", "I am a cat.", o200k_tokens, sizeof(o200k_tokens) / sizeof(o200k_tokens[0])},
     };
+    static const ModelMetadataCase metadata_cases[] = {
+        {"gpt-4", 8192, TIKTOKEN_TOKENIZER_CL100K_BASE},
+        {"gpt-4o", 128000, TIKTOKEN_TOKENIZER_O200K_BASE},
+        {"gpt-5", 400000, TIKTOKEN_TOKENIZER_O200K_BASE},
+        {"gpt2", 0, TIKTOKEN_TOKENIZER_GPT2},
+        {"gpt-oss-20b", 131072, TIKTOKEN_TOKENIZER_O200K_HARMONY},
+    };
     size_t i;
 
     printf("tiktoken_c version: %s\n", tiktoken_c_version());
+
+    for (i = 0; i < sizeof(metadata_cases) / sizeof(metadata_cases[0]); i++)
+    {
+        const ModelMetadataCase *test_case = &metadata_cases[i];
+        TiktokenTokenizer tokenizer = tiktoken_get_tokenizer(test_case->model);
+
+        if (tokenizer != test_case->expected_tokenizer)
+        {
+            fprintf(stderr, "Tokenizer mismatch for %s: expected %d, got %d\n",
+                    test_case->model,
+                    (int)test_case->expected_tokenizer,
+                    (int)tokenizer);
+            return 1;
+        }
+
+        if (test_case->expected_context_size != 0)
+        {
+            size_t context_size = tiktoken_get_context_size(test_case->model);
+            if (context_size != test_case->expected_context_size)
+            {
+                fprintf(stderr, "Context size mismatch for %s: expected %zu, got %zu\n",
+                        test_case->model,
+                        test_case->expected_context_size,
+                        context_size);
+                return 1;
+            }
+        }
+    }
 
     for (i = 0; i < sizeof(test_cases) / sizeof(test_cases[0]); i++)
     {

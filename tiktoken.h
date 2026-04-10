@@ -14,11 +14,27 @@ extern "C"
   typedef void CoreBPE;
   typedef uint32_t Rank;
 
+  typedef enum TiktokenTokenizer
+  {
+    TIKTOKEN_TOKENIZER_UNKNOWN = 0,
+    TIKTOKEN_TOKENIZER_O200K_HARMONY = 1,
+    TIKTOKEN_TOKENIZER_O200K_BASE = 2,
+    TIKTOKEN_TOKENIZER_CL100K_BASE = 3,
+    TIKTOKEN_TOKENIZER_P50K_BASE = 4,
+    TIKTOKEN_TOKENIZER_R50K_BASE = 5,
+    TIKTOKEN_TOKENIZER_P50K_EDIT = 6,
+    TIKTOKEN_TOKENIZER_GPT2 = 7,
+  } TiktokenTokenizer;
+
   typedef struct CChatCompletionRequestMessage CChatCompletionRequestMessage;
 
   const char *tiktoken_c_version(void);
 
   void tiktoken_init_logger(void);
+
+  size_t tiktoken_get_context_size(const char *model);
+
+  TiktokenTokenizer tiktoken_get_tokenizer(const char *model);
 
   CChatCompletionRequestMessage *tiktoken_chat_message_new(const char *role);
 

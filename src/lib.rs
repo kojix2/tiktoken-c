@@ -24,6 +24,67 @@ pub extern "C" fn tiktoken_init_logger() {
     SimpleLogger::new().init().unwrap();
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CTiktokenTokenizer {
+    Unknown = 0,
+    O200kHarmony = 1,
+    O200kBase = 2,
+    Cl100kBase = 3,
+    P50kBase = 4,
+    R50kBase = 5,
+    P50kEdit = 6,
+    Gpt2 = 7,
+}
+
+impl From<tiktoken_rs::tokenizer::Tokenizer> for CTiktokenTokenizer {
+    fn from(tokenizer: tiktoken_rs::tokenizer::Tokenizer) -> Self {
+        match tokenizer {
+            tiktoken_rs::tokenizer::Tokenizer::O200kHarmony => Self::O200kHarmony,
+            tiktoken_rs::tokenizer::Tokenizer::O200kBase => Self::O200kBase,
+            tiktoken_rs::tokenizer::Tokenizer::Cl100kBase => Self::Cl100kBase,
+            tiktoken_rs::tokenizer::Tokenizer::P50kBase => Self::P50kBase,
+            tiktoken_rs::tokenizer::Tokenizer::R50kBase => Self::R50kBase,
+            tiktoken_rs::tokenizer::Tokenizer::P50kEdit => Self::P50kEdit,
+            tiktoken_rs::tokenizer::Tokenizer::Gpt2 => Self::Gpt2,
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_get_context_size(model: *const c_char) -> usize {
+    let model = match parse_required_string(model, "model") {
+        Ok(model) => model,
+        Err(_) => return usize::MAX,
+    };
+
+    match tiktoken_rs::model::get_context_size(&model) {
+        Some(context_size) => context_size,
+        None => {
+            #[cfg(feature = "logging")]
+            warn!("Failed to get context size!");
+            usize::MAX
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn tiktoken_get_tokenizer(model: *const c_char) -> CTiktokenTokenizer {
+    let model = match parse_required_string(model, "model") {
+        Ok(model) => model,
+        Err(_) => return CTiktokenTokenizer::Unknown,
+    };
+
+    match tiktoken_rs::tokenizer::get_tokenizer(&model) {
+        Some(tokenizer) => tokenizer.into(),
+        None => {
+            #[cfg(feature = "logging")]
+            warn!("Failed to get tokenizer!");
+            CTiktokenTokenizer::Unknown
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn tiktoken_get_text_completion_max_tokens(
     model: *const c_char,
@@ -734,6 +795,67 @@ mod tests {
         let version = tiktoken_c_version();
         let version = get_string_from_c_char(version).unwrap();
         assert_eq!(version, env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn test_get_context_size() {
+        let model = CString::new("gpt-4o").unwrap();
+        let context_size = tiktoken_get_context_size(model.as_ptr());
+        assert_eq!(context_size, 128000);
+    }
+
+    #[test]
+    fn test_get_context_size_ft_model() {
+        let model = CString::new("ft:gpt-4o:org:model:id").unwrap();
+        let context_size = tiktoken_get_context_size(model.as_ptr());
+        assert_eq!(context_size, 128000);
+    }
+
+    #[test]
+    fn test_get_context_size_invalid_model() {
+        let model = CString::new("cat-gpt").unwrap();
+        let context_size = tiktoken_get_context_size(model.as_ptr());
+        assert_eq!(context_size, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_context_size_null_model() {
+        let context_size = tiktoken_get_context_size(std::ptr::null());
+        assert_eq!(context_size, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_tokenizer() {
+        let model = CString::new("gpt-4o").unwrap();
+        let tokenizer = tiktoken_get_tokenizer(model.as_ptr());
+        assert_eq!(tokenizer, CTiktokenTokenizer::O200kBase);
+    }
+
+    #[test]
+    fn test_get_tokenizer_gpt2() {
+        let model = CString::new("gpt2").unwrap();
+        let tokenizer = tiktoken_get_tokenizer(model.as_ptr());
+        assert_eq!(tokenizer, CTiktokenTokenizer::Gpt2);
+    }
+
+    #[test]
+    fn test_get_tokenizer_ft_model() {
+        let model = CString::new("ft:gpt-3.5-turbo:org:model:id").unwrap();
+        let tokenizer = tiktoken_get_tokenizer(model.as_ptr());
+        assert_eq!(tokenizer, CTiktokenTokenizer::Cl100kBase);
+    }
+
+    #[test]
+    fn test_get_tokenizer_invalid_model() {
+        let model = CString::new("cat-gpt").unwrap();
+        let tokenizer = tiktoken_get_tokenizer(model.as_ptr());
+        assert_eq!(tokenizer, CTiktokenTokenizer::Unknown);
+    }
+
+    #[test]
+    fn test_get_tokenizer_null_model() {
+        let tokenizer = tiktoken_get_tokenizer(std::ptr::null());
+        assert_eq!(tokenizer, CTiktokenTokenizer::Unknown);
     }
 
     #[test]
