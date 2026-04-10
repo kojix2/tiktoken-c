@@ -25,7 +25,7 @@ pub extern "C" fn tiktoken_init_logger() {
 }
 
 #[no_mangle]
-pub extern "C" fn tiktoken_get_completion_max_tokens(
+pub extern "C" fn tiktoken_get_text_completion_max_tokens(
     model: *const c_char,
     prompt: *const c_char,
 ) -> usize {
@@ -737,51 +737,60 @@ mod tests {
     }
 
     #[test]
-    fn test_get_completion_max_tokens() {
+    fn test_get_text_completion_max_tokens() {
         let model = CString::new("gpt-4").unwrap();
         let prompt = CString::new("I am a cat.").unwrap();
-        let max_tokens = tiktoken_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        let max_tokens = tiktoken_get_text_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
         assert_eq!(max_tokens, 8187);
     }
 
     #[test]
-    fn test_get_completion_max_tokens_invalid_model() {
+    fn test_get_text_completion_max_tokens_invalid_model() {
         let model = CString::new("cat-gpt").unwrap();
         let prompt = CString::new("I am a cat.").unwrap();
-        let max_tokens = tiktoken_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        let max_tokens = tiktoken_get_text_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
         assert_eq!(max_tokens, usize::MAX);
     }
 
     #[test]
-    fn test_get_completion_max_tokens_gpt41() {
+    fn test_get_text_completion_max_tokens_null_model() {
+        let prompt = CString::new("I am a cat.").unwrap();
+        let max_tokens =
+            tiktoken_get_text_completion_max_tokens(std::ptr::null(), prompt.as_ptr());
+        assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_text_completion_max_tokens_null_prompt() {
+        let model = CString::new("gpt-4").unwrap();
+        let max_tokens = tiktoken_get_text_completion_max_tokens(model.as_ptr(), std::ptr::null());
+        assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_get_text_completion_max_tokens_gpt41() {
         // gpt-4.1 context size: 1,047,576; "I am a cat." encodes to 5 tokens (o200k)
         let model = CString::new("gpt-4.1").unwrap();
         let prompt = CString::new("I am a cat.").unwrap();
-        let max_tokens = tiktoken_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        let max_tokens = tiktoken_get_text_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
         assert_eq!(max_tokens, 1_047_571);
     }
 
     #[test]
-    fn test_get_completion_max_tokens_gpt5() {
+    fn test_get_text_completion_max_tokens_gpt5() {
         // gpt-5 context size: 400,000; "I am a cat." encodes to 5 tokens (o200k)
         let model = CString::new("gpt-5").unwrap();
         let prompt = CString::new("I am a cat.").unwrap();
-        let max_tokens = tiktoken_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        let max_tokens = tiktoken_get_text_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
         assert_eq!(max_tokens, 399_995);
     }
 
     #[test]
-    fn test_get_completion_max_tokens_null_model() {
-        let prompt = CString::new("I am a cat.").unwrap();
-        let max_tokens = tiktoken_get_completion_max_tokens(std::ptr::null(), prompt.as_ptr());
-        assert_eq!(max_tokens, usize::MAX);
-    }
-
-    #[test]
-    fn test_get_completion_max_tokens_null_prompt() {
+    fn test_get_text_completion_max_tokens_basic_repeat() {
         let model = CString::new("gpt-4").unwrap();
-        let max_tokens = tiktoken_get_completion_max_tokens(model.as_ptr(), std::ptr::null());
-        assert_eq!(max_tokens, usize::MAX);
+        let prompt = CString::new("I am a cat.").unwrap();
+        let max_tokens = tiktoken_get_text_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        assert_eq!(max_tokens, 8187);
     }
 
     fn message_array(

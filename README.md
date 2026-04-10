@@ -90,7 +90,7 @@ uint8_t *tiktoken_corebpe_decode_bytes(CoreBPE *ptr, const Rank *tokens,
 #### Token Counting
 
 ```c
-size_t tiktoken_get_completion_max_tokens(const char *model, const char *prompt);
+size_t tiktoken_get_text_completion_max_tokens(const char *model, const char *prompt);
 
 size_t tiktoken_num_tokens_from_messages(const char *model,
                                          uint32_t num_messages,
