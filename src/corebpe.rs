@@ -158,4 +158,28 @@ mod tests {
         let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
         assert!(corebpe.is_null());
     }
+
+    #[test]
+    fn test_get_bpe_from_model_gpt_4_1() {
+        let model = CString::new("gpt-4.1").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        assert!(!corebpe.is_null());
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_get_bpe_from_model_gpt5() {
+        let model = CString::new("gpt-5").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        assert!(!corebpe.is_null());
+        tiktoken_destroy_corebpe(corebpe);
+    }
+
+    #[test]
+    fn test_get_bpe_from_model_gpt_oss() {
+        let model = CString::new("gpt-oss-20b").unwrap();
+        let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
+        assert!(!corebpe.is_null());
+        tiktoken_destroy_corebpe(corebpe);
+    }
 }

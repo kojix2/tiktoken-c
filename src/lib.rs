@@ -753,6 +753,24 @@ mod tests {
     }
 
     #[test]
+    fn test_get_completion_max_tokens_gpt41() {
+        // gpt-4.1 context size: 1,047,576; "I am a cat." encodes to 5 tokens (o200k)
+        let model = CString::new("gpt-4.1").unwrap();
+        let prompt = CString::new("I am a cat.").unwrap();
+        let max_tokens = tiktoken_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        assert_eq!(max_tokens, 1_047_571);
+    }
+
+    #[test]
+    fn test_get_completion_max_tokens_gpt5() {
+        // gpt-5 context size: 400,000; "I am a cat." encodes to 5 tokens (o200k)
+        let model = CString::new("gpt-5").unwrap();
+        let prompt = CString::new("I am a cat.").unwrap();
+        let max_tokens = tiktoken_get_completion_max_tokens(model.as_ptr(), prompt.as_ptr());
+        assert_eq!(max_tokens, 399_995);
+    }
+
+    #[test]
     fn test_get_completion_max_tokens_null_model() {
         let prompt = CString::new("I am a cat.").unwrap();
         let max_tokens = tiktoken_get_completion_max_tokens(std::ptr::null(), prompt.as_ptr());
@@ -891,6 +909,66 @@ mod tests {
         let max_tokens =
             tiktoken_get_chat_completion_max_tokens(model.as_ptr(), messages.len() as u32, messages.as_ptr());
         assert_eq!(max_tokens, usize::MAX);
+    }
+
+    #[test]
+    fn test_num_tokens_from_messages_gpt41() {
+        // gpt-4.1 uses O200kBase tokenizer; overhead is same as other current models
+        let model = CString::new("gpt-4.1").unwrap();
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
+        let num_tokens = tiktoken_num_tokens_from_messages(
+            model.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
+        );
+        assert_eq!(num_tokens, 12);
+        destroy_messages(&messages);
+    }
+
+    #[test]
+    fn test_get_chat_completion_max_tokens_gpt41() {
+        // gpt-4.1 context size: 1,047,576
+        let model = CString::new("gpt-4.1").unwrap();
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
+        let max_tokens = tiktoken_get_chat_completion_max_tokens(
+            model.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
+        );
+        assert_eq!(max_tokens, 1_047_564);
+        destroy_messages(&messages);
+    }
+
+    #[test]
+    fn test_num_tokens_from_messages_gpt_oss() {
+        // gpt-oss-20b uses O200kHarmony tokenizer, which is supported for chat counting
+        let model = CString::new("gpt-oss-20b").unwrap();
+        let role = CString::new("system").unwrap();
+        let content = CString::new("I am a cat.").unwrap();
+        let message = tiktoken_chat_message_new(role.as_ptr());
+        assert!(!message.is_null());
+        assert!(tiktoken_chat_message_set_content(message, content.as_ptr()));
+        let messages = [message];
+        let message_ptrs = message_array(&messages);
+        let num_tokens = tiktoken_num_tokens_from_messages(
+            model.as_ptr(),
+            message_ptrs.len() as u32,
+            message_ptrs.as_ptr(),
+        );
+        assert_eq!(num_tokens, 12);
+        destroy_messages(&messages);
     }
 
     #[test]
