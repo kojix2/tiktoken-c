@@ -561,7 +561,14 @@ pub extern "C" fn tiktoken_corebpe_encode(
         allowed_special_hash_set
     };
     let corebpe = unsafe { &mut *ptr };
-    let encoded = corebpe.encode(text, &allowed_special).0;
+    let encoded = match corebpe.encode(text, &allowed_special) {
+        Ok((encoded, _)) => encoded,
+        Err(_) => {
+            #[cfg(feature = "logging")]
+            warn!("Failed to encode text!");
+            return std::ptr::null_mut();
+        }
+    };
     unsafe {
         if !num_tokens.is_null() {
             *num_tokens = encoded.len();
@@ -630,7 +637,14 @@ pub extern "C" fn tiktoken_corebpe_count(
         }
     };
     let corebpe = unsafe { &mut *ptr };
-    corebpe.count(text, &allowed_special)
+    match corebpe.count(text, &allowed_special) {
+        Ok(count) => count,
+        Err(_) => {
+            #[cfg(feature = "logging")]
+            warn!("Failed to count tokens!");
+            usize::MAX
+        }
+    }
 }
 
 #[no_mangle]
