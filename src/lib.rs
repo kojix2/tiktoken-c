@@ -522,11 +522,6 @@ pub extern "C" fn tiktoken_corebpe_encode(
         warn!("Null pointer provided for text!");
         return std::ptr::null_mut();
     }
-    if allowed_special.is_null() {
-        #[cfg(feature = "logging")]
-        warn!("Null pointer provided for allowed_special!");
-        return std::ptr::null_mut();
-    }
     let text = unsafe {
         let raw = CStr::from_ptr(text);
         match raw.to_str() {
@@ -539,26 +534,35 @@ pub extern "C" fn tiktoken_corebpe_encode(
         }
     };
     let allowed_special = unsafe {
-        let slice = std::slice::from_raw_parts(allowed_special, allowed_special_len);
-        let mut allowed_special_hash_set = std::collections::HashSet::new();
-        for i in 0..allowed_special_len {
-            if slice[i].is_null() {
+        if allowed_special_len == 0 {
+            std::collections::HashSet::new()
+        } else {
+            if allowed_special.is_null() {
                 #[cfg(feature = "logging")]
-                warn!("Null pointer provided in allowed_special!");
+                warn!("Null pointer provided for allowed_special!");
                 return std::ptr::null_mut();
             }
-            let c_str = CStr::from_ptr(slice[i]);
-            let str_slice = match c_str.to_str() {
-                Ok(valid_str) => valid_str,
-                Err(_) => {
+            let slice = std::slice::from_raw_parts(allowed_special, allowed_special_len);
+            let mut allowed_special_hash_set = std::collections::HashSet::new();
+            for item in slice {
+                if item.is_null() {
                     #[cfg(feature = "logging")]
-                    warn!("Invalid UTF-8 sequence provided for allowed_special!");
+                    warn!("Null pointer provided in allowed_special!");
                     return std::ptr::null_mut();
                 }
-            };
-            allowed_special_hash_set.insert(str_slice);
+                let c_str = CStr::from_ptr(*item);
+                let str_slice = match c_str.to_str() {
+                    Ok(valid_str) => valid_str,
+                    Err(_) => {
+                        #[cfg(feature = "logging")]
+                        warn!("Invalid UTF-8 sequence provided for allowed_special!");
+                        return std::ptr::null_mut();
+                    }
+                };
+                allowed_special_hash_set.insert(str_slice);
+            }
+            allowed_special_hash_set
         }
-        allowed_special_hash_set
     };
     let corebpe = unsafe { &mut *ptr };
     let encoded = match corebpe.encode(text, &allowed_special) {
@@ -1354,16 +1358,10 @@ mod tests {
         let mut num_tokens: usize = 0;
         let corebpe = tiktoken_get_bpe_from_model(model.as_ptr());
 
-        // zero-length slices require a non-null pointer
-        // Create a CString and an array of pointers to pass to the function
-        let placeholder = CString::new("").unwrap();
-        let placeholder_ptr: *const i8 = placeholder.as_ptr();
-        let ptr_array: [*const i8; 1] = [placeholder_ptr];
-
         let tokens = tiktoken_corebpe_encode(
             corebpe,
             text.as_ptr(),
-            ptr_array.as_ptr(),
+            std::ptr::null(),
             0,
             &mut num_tokens,
         );
