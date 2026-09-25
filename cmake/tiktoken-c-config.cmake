@@ -68,6 +68,15 @@ foreach(_target tiktoken-c::shared-logging tiktoken-c::static-logging)
   endif()
 endforeach()
 
+if(WIN32)
+  foreach(_target tiktoken-c::static tiktoken-c::static-logging)
+    if(TARGET "${_target}")
+      set_property(TARGET "${_target}" APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES ntdll)
+    endif()
+  endforeach()
+endif()
+
 if(UNIX AND TARGET tiktoken-c::static)
   find_package(Threads REQUIRED)
   foreach(_target tiktoken-c::static tiktoken-c::static-logging)
