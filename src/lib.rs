@@ -830,6 +830,13 @@ mod tests {
     }
 
     #[test]
+    fn test_get_context_size_gpt6() {
+        let model = CString::new("gpt-6").unwrap();
+        let context_size = tiktoken_get_context_size(model.as_ptr());
+        assert_eq!(context_size, 1_050_000);
+    }
+
+    #[test]
     fn test_get_context_size_invalid_model() {
         let model = CString::new("cat-gpt").unwrap();
         let context_size = tiktoken_get_context_size(model.as_ptr());
