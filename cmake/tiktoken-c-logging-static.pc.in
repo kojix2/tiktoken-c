@@ -1,0 +1,9 @@
+prefix=${pcfiledir}
+libdir=${prefix}
+includedir=${prefix}
+
+Name: tiktoken-c-logging-static
+Description: Static C API binding for tiktoken-rs with logging support
+Version: @TIKTOKEN_C_VERSION@
+Libs: ${libdir}/logging/libtiktoken_c.a @TIKTOKEN_C_STATIC_LIBS@
+Cflags: -I${includedir} -DTIKTOKEN_C_ENABLE_LOGGING

@@ -1,0 +1,9 @@
+prefix=${pcfiledir}
+libdir=${prefix}
+includedir=${prefix}
+
+Name: tiktoken-c-static
+Description: Static C API binding for tiktoken-rs
+Version: @TIKTOKEN_C_VERSION@
+Libs: ${libdir}/libtiktoken_c.a @TIKTOKEN_C_STATIC_LIBS@
+Cflags: -I${includedir}

@@ -1,5 +1,8 @@
 /* https://github.com/kojix2/tiktoken-c */
 
+#ifndef TIKTOKEN_C_H
+#define TIKTOKEN_C_H
+
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -30,7 +33,9 @@ extern "C"
 
   const char *tiktoken_c_version(void);
 
+#ifdef TIKTOKEN_C_ENABLE_LOGGING
   void tiktoken_init_logger(void);
+#endif
 
   size_t tiktoken_get_context_size(const char *model);
 
@@ -119,4 +124,6 @@ extern "C"
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

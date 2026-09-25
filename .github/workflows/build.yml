@@ -60,29 +60,85 @@ jobs:
           echo "archive_name=tiktoken-c-${version_name}-${{ matrix.asset_suffix }}.${{ matrix.archive_ext }}" >> "$GITHUB_OUTPUT"
           echo "header_name=tiktoken-c-${version_name}.h" >> "$GITHUB_OUTPUT"
 
+      - name: Generate package metadata
+        shell: bash
+        run: |
+          package_version="$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[] | select(.name == "tiktoken-c") | .version')"
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            static_libs="-lgcc_s -lutil -lrt -lpthread -lm -ldl -lc"
+          else
+            static_libs="-liconv -lpthread -lm -lc"
+          fi
+          cmake \
+            -DTIKTOKEN_C_VERSION="$package_version" \
+            -DTIKTOKEN_C_STATIC_LIBS="$static_libs" \
+            -DOUTPUT_DIR="$PWD/package_metadata" \
+            -P cmake/configure-package.cmake
+
       - name: Create package
         shell: bash
         run: |
-          mkdir -p release_package
+          mkdir -p release_package/logging
           cp tiktoken.h release_package/
           cp README.md release_package/
           cp LICENSE.txt release_package/
+          cp package_metadata/tiktoken-c-config.cmake release_package/
+          cp package_metadata/tiktoken-c-config-version.cmake release_package/
 
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/default/release/tiktoken_c.dll release_package/
             cp target/default/release/tiktoken_c.dll.lib release_package/
-            cp target/logging/release/tiktoken_c.dll release_package/tiktoken_c_debug.dll
-            cp target/logging/release/tiktoken_c.dll.lib release_package/tiktoken_c_debug.dll.lib
+            cp target/default/release/tiktoken_c.lib release_package/
+            cp target/logging/release/tiktoken_c.dll release_package/logging/
+            cp target/logging/release/tiktoken_c.dll.lib release_package/logging/
+            cp target/logging/release/tiktoken_c.lib release_package/logging/
           else
+            cp package_metadata/tiktoken-c.pc release_package/
+            cp package_metadata/tiktoken-c-logging.pc release_package/
+            cp package_metadata/tiktoken-c-static.pc release_package/
+            cp package_metadata/tiktoken-c-logging-static.pc release_package/
             for ext in a so dylib; do
               if [[ -f "target/default/release/libtiktoken_c.$ext" ]]; then
                 cp "target/default/release/libtiktoken_c.$ext" release_package/
               fi
               if [[ -f "target/logging/release/libtiktoken_c.$ext" ]]; then
-                cp "target/logging/release/libtiktoken_c.$ext" "release_package/libtiktoken_c_debug.$ext"
+                cp "target/logging/release/libtiktoken_c.$ext" release_package/logging/
               fi
             done
           fi
+
+      - name: Test CMake package
+        shell: bash
+        run: |
+          cmake \
+            -S test/cmake \
+            -B package_test_build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$PWD/release_package"
+          cmake --build package_test_build --config Release
+
+      - name: Run CMake package tests
+        run: ctest --test-dir package_test_build -C Release --output-on-failure
+
+      - name: Test pkg-config package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          export PKG_CONFIG_PATH="$PWD/release_package"
+          pkg-config --validate \
+            tiktoken-c \
+            tiktoken-c-static \
+            tiktoken-c-logging \
+            tiktoken-c-logging-static
+          cc test/cmake/main.c \
+            $(pkg-config --cflags --libs tiktoken-c) \
+            -o package_test_build/pkg_config_shared_test
+          LD_LIBRARY_PATH="$PWD/release_package" \
+            package_test_build/pkg_config_shared_test
+          cc test/cmake/main.c \
+            $(pkg-config --cflags --libs tiktoken-c-static) \
+            -o package_test_build/pkg_config_static_test
+          package_test_build/pkg_config_static_test
 
       - name: Create archive (Unix)
         if: runner.os != 'Windows'

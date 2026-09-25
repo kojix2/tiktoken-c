@@ -1,0 +1,10 @@
+prefix=${pcfiledir}
+libdir=${prefix}/logging
+includedir=${prefix}
+
+Name: tiktoken-c-logging
+Description: C API binding for tiktoken-rs with logging support
+Version: @TIKTOKEN_C_VERSION@
+Libs: -L${libdir} -ltiktoken_c
+Libs.private: @TIKTOKEN_C_STATIC_LIBS@
+Cflags: -I${includedir} -DTIKTOKEN_C_ENABLE_LOGGING

@@ -16,8 +16,62 @@ Download from [GitHub Releases](https://github.com/kojix2/tiktoken-c/releases) o
 git clone https://github.com/kojix2/tiktoken-c
 cd tiktoken-c
 cargo build --release
-# Output: target/release/libtiktoken_c.{so,dylib,dll}
+# Output: target/release/libtiktoken_c.{a,so,dylib} (Unix)
+#         target/release/tiktoken_c.{dll,lib} (Windows)
 ```
+
+Release archives contain the C header, shared and static libraries, CMake package
+configuration, and (on Unix) pkg-config metadata. Logging-enabled libraries are
+kept in the `logging` subdirectory so they can coexist with the regular build.
+
+### CMake
+
+Extract the release archive and add its directory to `CMAKE_PREFIX_PATH`:
+
+```cmake
+find_package(tiktoken-c CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE tiktoken-c::tiktoken-c)
+```
+
+```sh
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/tiktoken-c
+cmake --build build
+```
+
+The default target uses the shared library. The available imported targets are:
+
+| Target | Library |
+| ------ | ------- |
+| `tiktoken-c::tiktoken-c` | Shared library when available, otherwise static |
+| `tiktoken-c::shared` | Shared library |
+| `tiktoken-c::static` | Static library and required system libraries |
+| `tiktoken-c::shared-logging` | Shared library with logging enabled |
+| `tiktoken-c::static-logging` | Static library with logging enabled |
+
+On Windows, place the release directory on `PATH` when using the regular DLL.
+For a logging target, place its `logging` subdirectory before the release root
+on `PATH`, because both variants intentionally retain the same DLL name.
+
+### pkg-config
+
+Unix release archives include metadata for the regular and logging-enabled
+libraries:
+
+```sh
+export PKG_CONFIG_PATH=/path/to/tiktoken-c
+cc app.c $(pkg-config --cflags --libs tiktoken-c)
+cc app.c $(pkg-config --cflags --libs tiktoken-c-static)
+```
+
+Use `tiktoken-c-logging` instead of `tiktoken-c` to link the logging-enabled
+shared library, and put the `logging` subdirectory on the runtime library search
+path. Use `tiktoken-c-logging-static` for its static counterpart.
+
+### Other Languages
+
+Languages with a C FFI can load the shared library and use `tiktoken.h` as the
+ABI definition. Keep `CoreBPE` and chat-message values opaque, and release every
+returned allocation with the matching cleanup function documented below.
 
 ## C API Overview
 
@@ -38,7 +92,9 @@ typedef struct CChatCompletionRequestMessage CChatCompletionRequestMessage;
 
 ```c
 const char *tiktoken_c_version(void);
+#ifdef TIKTOKEN_C_ENABLE_LOGGING
 void tiktoken_init_logger(void);
+#endif
 size_t tiktoken_get_context_size(const char *model);
 TiktokenTokenizer tiktoken_get_tokenizer(const char *model);
 
